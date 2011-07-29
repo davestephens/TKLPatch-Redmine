@@ -1,0 +1,19 @@
+#!/bin/bash -ex
+
+# update rails/rack to correct versions
+cd /var/www/railsapp
+gem install rails -v=2.3.11
+gem install rack -v=1.1.0
+
+# do the stuff in the redmine upgrade doc
+rake config/initializers/session_store.rb
+
+# run db migrations
+rake db:migrate RAILS_ENV=production 
+
+# clean up
+rake tmp:cache:clear
+rake tmp:sessions:clear
+
+# restart apache to finish
+service apache2 restart
