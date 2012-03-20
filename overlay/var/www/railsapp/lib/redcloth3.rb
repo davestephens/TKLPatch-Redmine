@@ -340,9 +340,9 @@ class RedCloth3 < String
     #
     A_HLGN = /(?:(?:<>|<|>|\=|[()]+)+)/
     A_VLGN = /[\-^~]/
-    C_CLAS = '(?:\([^)]+\))'
-    C_LNGE = '(?:\[[^\[\]]+\])'
-    C_STYL = '(?:\{[^}]+\})'
+    C_CLAS = '(?:\([^")]+\))'
+    C_LNGE = '(?:\[[^"\[\]]+\])'
+    C_STYL = '(?:\{[^"}]+\})'
     S_CSPN = '(?:\\\\\d+)'
     S_RSPN = '(?:/\d+)'
     A = "(?:#{A_HLGN}?#{A_VLGN}?|#{A_VLGN}?#{A_HLGN}?)"
@@ -938,7 +938,7 @@ class RedCloth3 < String
             stln,algn,atts,url,title,href,href_a1,href_a2 = $~[1..8]
             htmlesc title
             atts = pba( atts )
-            atts = " src=\"#{ url }\"#{ atts }"
+            atts = " src=\"#{ htmlesc url.dup }\"#{ atts }"
             atts << " title=\"#{ title }\"" if title
             atts << " alt=\"#{ title }\"" 
             # size = @getimagesize($url);
@@ -1058,7 +1058,7 @@ class RedCloth3 < String
         end
     end
 
-    def rip_offtags( text, escape_aftertag=true )
+    def rip_offtags( text, escape_aftertag=true, escape_line=true )
         if text =~ /<.*>/
             ## strip and encode <pre> content
             codepre, used_offtags = 0, {}
@@ -1068,7 +1068,7 @@ class RedCloth3 < String
                     codepre += 1
                     used_offtags[offtag] = true
                     if codepre - used_offtags.length > 0
-                        htmlesc( line, :NoQuotes )
+                        htmlesc( line, :NoQuotes ) if escape_line
                         @pre_list.last << line
                         line = ""
                     else
@@ -1086,7 +1086,7 @@ class RedCloth3 < String
                     end
                 elsif $1 and codepre > 0
                     if codepre - used_offtags.length > 0
-                        htmlesc( line, :NoQuotes )
+                        htmlesc( line, :NoQuotes ) if escape_line
                         @pre_list.last << line
                         line = ""
                     end

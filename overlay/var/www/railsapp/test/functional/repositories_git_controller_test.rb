@@ -22,13 +22,22 @@ require 'repositories_controller'
 class RepositoriesController; def rescue_action(e) raise e end; end
 
 class RepositoriesGitControllerTest < ActionController::TestCase
-  fixtures :projects, :users, :roles, :members, :member_roles, :repositories, :enabled_modules
+  fixtures :projects, :users, :roles, :members, :member_roles,
+           :repositories, :enabled_modules
 
-  # No '..' in the repository path
-  REPOSITORY_PATH = RAILS_ROOT.gsub(%r{config\/\.\.}, '') + '/tmp/test/git_repository'
+  REPOSITORY_PATH = Rails.root.join('tmp/test/git_repository').to_s
   REPOSITORY_PATH.gsub!(/\//, "\\") if Redmine::Platform.mswin?
   PRJ_ID     = 3
   CHAR_1_HEX = "\xc3\x9c"
+  NUM_REV = 21
+
+  ## Git, Mercurial and CVS path encodings are binary.
+  ## Subversion supports URL encoding for path.
+  ## Redmine Mercurial adapter and extension use URL encoding.
+  ## Git accepts only binary path in command line parameter.
+  ## So, there is no way to use binary command line parameter in JRuby.
+  JRUBY_SKIP     = (RUBY_PLATFORM == 'java')
+  JRUBY_SKIP_STR = "TODO: This test fails in JRuby"
 
   def setup
     @ruby19_non_utf8_pass =
@@ -38,9 +47,10 @@ class RepositoriesGitControllerTest < ActionController::TestCase
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
     User.current = nil
+    @project    = Project.find(PRJ_ID)
     @repository = Repository::Git.create(
-                      :project => Project.find(3),
-                      :url     => REPOSITORY_PATH,
+                      :project       => @project,
+                      :url           => REPOSITORY_PATH,
                       :path_encoding => 'ISO-8859-1'
                       )
     assert @repository
@@ -54,8 +64,11 @@ class RepositoriesGitControllerTest < ActionController::TestCase
 
   if File.directory?(REPOSITORY_PATH)
     def test_browse_root
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
+
       get :show, :id => PRJ_ID
       assert_response :success
       assert_template 'show'
@@ -71,12 +84,14 @@ class RepositoriesGitControllerTest < ActionController::TestCase
       assert assigns(:entries).detect {|e| e.name == 'filemane with spaces.txt' && e.kind == 'file'}
       assert assigns(:entries).detect {|e| e.name == ' filename with a leading space.txt ' && e.kind == 'file'}
       assert_not_nil assigns(:changesets)
-      assigns(:changesets).size > 0
+      assert assigns(:changesets).size > 0
     end
 
     def test_browse_branch
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       get :show, :id => PRJ_ID, :rev => 'test_branch'
       assert_response :success
       assert_template 'show'
@@ -87,12 +102,14 @@ class RepositoriesGitControllerTest < ActionController::TestCase
       assert assigns(:entries).detect {|e| e.name == 'README' && e.kind == 'file'}
       assert assigns(:entries).detect {|e| e.name == 'test.txt' && e.kind == 'file'}
       assert_not_nil assigns(:changesets)
-      assigns(:changesets).size > 0
+      assert assigns(:changesets).size > 0
     end
 
     def test_browse_tag
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
        [
         "tag00.lightweight",
         "tag01.annotated",
@@ -101,15 +118,17 @@ class RepositoriesGitControllerTest < ActionController::TestCase
         assert_response :success
         assert_template 'show'
         assert_not_nil assigns(:entries)
-        assigns(:entries).size > 0
+        assert assigns(:entries).size > 0
         assert_not_nil assigns(:changesets)
-        assigns(:changesets).size > 0
+        assert assigns(:changesets).size > 0
       end
     end
 
     def test_browse_directory
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       get :show, :id => PRJ_ID, :path => ['images']
       assert_response :success
       assert_template 'show'
@@ -120,12 +139,14 @@ class RepositoriesGitControllerTest < ActionController::TestCase
       assert_equal 'file', entry.kind
       assert_equal 'images/edit.png', entry.path
       assert_not_nil assigns(:changesets)
-      assigns(:changesets).size > 0
+      assert assigns(:changesets).size > 0
     end
 
     def test_browse_at_given_revision
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       get :show, :id => PRJ_ID, :path => ['images'],
           :rev => '7234cb2750b63f47bff735edc50a1c0a433c2518'
       assert_response :success
@@ -133,7 +154,7 @@ class RepositoriesGitControllerTest < ActionController::TestCase
       assert_not_nil assigns(:entries)
       assert_equal ['delete.png'], assigns(:entries).collect(&:name)
       assert_not_nil assigns(:changesets)
-      assigns(:changesets).size > 0
+      assert assigns(:changesets).size > 0
     end
 
     def test_changes
@@ -157,6 +178,8 @@ class RepositoriesGitControllerTest < ActionController::TestCase
     def test_entry_show_latin_1
       if @ruby19_non_utf8_pass
         puts_ruby19_non_utf8_pass()
+      elsif JRUBY_SKIP
+        puts JRUBY_SKIP_STR
       else
         with_settings :repositories_encodings => 'UTF-8,ISO-8859-1' do
           ['57ca437c', '57ca437c0acbbcb749821fdf3726a1367056d364'].each do |r1|
@@ -191,24 +214,33 @@ class RepositoriesGitControllerTest < ActionController::TestCase
     end
 
     def test_diff
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       # Full diff of changeset 2f9c0091
-      get :diff, :id => PRJ_ID, :rev => '2f9c0091c754a91af7a9c478e36556b4bde8dcf7'
-      assert_response :success
-      assert_template 'diff'
-      # Line 22 removed
-      assert_tag :tag => 'th',
-                 :content => /22/,
-                 :sibling => { :tag => 'td',
-                               :attributes => { :class => /diff_out/ },
-                               :content => /def remove/ }
-      assert_tag :tag => 'h2', :content => /2f9c0091/
+      ['inline', 'sbs'].each do |dt|
+        get :diff,
+            :id   => PRJ_ID,
+            :rev  => '2f9c0091c754a91af7a9c478e36556b4bde8dcf7',
+            :type => dt
+        assert_response :success
+        assert_template 'diff'
+        # Line 22 removed
+        assert_tag :tag => 'th',
+                   :content => /22/,
+                   :sibling => { :tag => 'td',
+                                 :attributes => { :class => /diff_out/ },
+                                 :content => /def remove/ }
+        assert_tag :tag => 'h2', :content => /2f9c0091/
+      end
     end
 
     def test_diff_truncated
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       Setting.diff_max_lines_displayed = 5
 
       # Truncated diff of changeset 2f9c0091
@@ -228,16 +260,22 @@ class RepositoriesGitControllerTest < ActionController::TestCase
     end
 
     def test_diff_two_revs
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
-      get :diff, :id => PRJ_ID,
-          :rev    => '61b685fbe55ab05b5ac68402d5720c1a6ac973d1',
-          :rev_to => '2f9c0091c754a91af7a9c478e36556b4bde8dcf7'
-      assert_response :success
-      assert_template 'diff'
-      diff = assigns(:diff)
-      assert_not_nil diff
-      assert_tag :tag => 'h2', :content => /2f9c0091:61b685fb/
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
+      ['inline', 'sbs'].each do |dt|
+        get :diff,
+            :id     => PRJ_ID,
+            :rev    => '61b685fbe55ab05b5ac68402d5720c1a6ac973d1',
+            :rev_to => '2f9c0091c754a91af7a9c478e36556b4bde8dcf7',
+            :type   => dt
+        assert_response :success
+        assert_template 'diff'
+        diff = assigns(:diff)
+        assert_not_nil diff
+        assert_tag :tag => 'h2', :content => /2f9c0091:61b685fb/
+      end
     end
 
     def test_diff_latin_1
@@ -246,56 +284,82 @@ class RepositoriesGitControllerTest < ActionController::TestCase
       else
         with_settings :repositories_encodings => 'UTF-8,ISO-8859-1' do
           ['57ca437c', '57ca437c0acbbcb749821fdf3726a1367056d364'].each do |r1|
-            get :diff, :id => PRJ_ID, :rev => r1
-            assert_response :success
-            assert_template 'diff'
-            assert_tag :tag => 'thead',
-                       :descendant => {
-                         :tag => 'th',
-                         :attributes => { :class => 'filename' } ,
-                         :content => /latin-1-dir\/test-#{@char_1}.txt/ ,
-                        },
-                       :sibling => {
-                         :tag => 'tbody',
+            ['inline', 'sbs'].each do |dt|
+              get :diff, :id => PRJ_ID, :rev => r1, :type => dt
+              assert_response :success
+              assert_template 'diff'
+              assert_tag :tag => 'thead',
                          :descendant => {
-                            :tag => 'td',
-                            :attributes => { :class => /diff_in/ },
-                            :content => /test-#{@char_1}.txt/
+                           :tag => 'th',
+                           :attributes => { :class => 'filename' } ,
+                           :content => /latin-1-dir\/test-#{@char_1}.txt/ ,
+                          },
+                         :sibling => {
+                           :tag => 'tbody',
+                           :descendant => {
+                              :tag => 'td',
+                              :attributes => { :class => /diff_in/ },
+                              :content => /test-#{@char_1}.txt/
+                           }
                          }
-                       }
+            end
           end
         end
       end
+    end
+
+    def test_save_diff_type
+      @request.session[:user_id] = 1 # admin
+      user = User.find(1)
+      get :diff,
+          :id   => PRJ_ID,
+          :rev  => '2f9c0091c754a91af7a9c478e36556b4bde8dcf7'
+      assert_response :success
+      assert_template 'diff'
+      user.reload
+      assert_equal "inline", user.pref[:diff_type]
+      get :diff,
+          :id   => PRJ_ID,
+          :rev  => '2f9c0091c754a91af7a9c478e36556b4bde8dcf7',
+          :type => 'sbs'
+      assert_response :success
+      assert_template 'diff'
+      user.reload
+      assert_equal "sbs", user.pref[:diff_type]
     end
 
     def test_annotate
       get :annotate, :id => PRJ_ID, :path => ['sources', 'watchers_controller.rb']
       assert_response :success
       assert_template 'annotate'
-      # Line 23, changeset 2f9c0091
+      # Line 24, changeset 2f9c0091
       assert_tag :tag => 'th', :content => '24',
                  :sibling => {
                     :tag => 'td',
                     :child => {
                        :tag => 'a',
-                       :content => /2f9c0091c754a91af7a9c478e36556b4bde8dcf7/
+                       :content => /2f9c0091/
                        }
-                    },
+                    }
+      assert_tag :tag => 'th', :content => '24',
                  :sibling => { :tag => 'td', :content => /jsmith/ }
       assert_tag :tag => 'th', :content => '24',
                  :sibling => {
                     :tag => 'td',
                     :child => {
                        :tag => 'a',
-                       :content => /2f9c0091c754a91af7a9c478e36556b4bde8dcf7/
+                       :content => /2f9c0091/
                        }
-                    },
+                    }
+      assert_tag :tag => 'th', :content => '24',
                  :sibling => { :tag => 'td', :content => /watcher =/ }
     end
 
     def test_annotate_at_given_revision
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       get :annotate, :id => PRJ_ID, :rev => 'deff7',
           :path => ['sources', 'watchers_controller.rb']
       assert_response :success
@@ -310,9 +374,24 @@ class RepositoriesGitControllerTest < ActionController::TestCase
                               :content => /cannot be annotated/
     end
 
+    def test_annotate_error_when_too_big
+      with_settings :file_max_size_displayed => 1 do
+        get :annotate, :id => PRJ_ID, :path => ['sources', 'watchers_controller.rb'], :rev => 'deff712f'
+        assert_response 500
+        assert_tag :tag => 'p', :attributes => { :id => /errorExplanation/ },
+                                :content => /exceeds the maximum text file size/
+
+        get :annotate, :id => PRJ_ID, :path => ['README'], :rev => '7234cb2'
+        assert_response :success
+        assert_template 'annotate'
+      end
+    end
+
     def test_annotate_latin_1
       if @ruby19_non_utf8_pass
         puts_ruby19_non_utf8_pass()
+      elsif JRUBY_SKIP
+        puts JRUBY_SKIP_STR
       else
         with_settings :repositories_encodings => 'UTF-8,ISO-8859-1' do
           ['57ca437c', '57ca437c0acbbcb749821fdf3726a1367056d364'].each do |r1|
@@ -329,8 +408,10 @@ class RepositoriesGitControllerTest < ActionController::TestCase
     end
 
     def test_revision
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       ['61b685fbe55ab05b5ac68402d5720c1a6ac973d1', '61b685f'].each do |r|
         get :revision, :id => PRJ_ID, :rev => r
         assert_response :success
@@ -339,13 +420,56 @@ class RepositoriesGitControllerTest < ActionController::TestCase
     end
 
     def test_empty_revision
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
       ['', ' ', nil].each do |r|
         get :revision, :id => PRJ_ID, :rev => r
         assert_response 404
         assert_error_tag :content => /was not found/
       end
+    end
+
+    def test_destroy_valid_repository
+      @request.session[:user_id] = 1 # admin
+      assert_equal 0, @repository.changesets.count
+      @repository.fetch_changesets
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
+
+      get :destroy, :id => PRJ_ID
+      assert_response 302
+      @project.reload
+      assert_nil @project.repository
+    end
+
+    def test_destroy_invalid_repository
+      @request.session[:user_id] = 1 # admin
+      assert_equal 0, @repository.changesets.count
+      @repository.fetch_changesets
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
+
+      get :destroy, :id => PRJ_ID
+      assert_response 302
+      @project.reload
+      assert_nil @project.repository
+
+      @repository = Repository::Git.create(
+                      :project       => @project,
+                      :url           => "/invalid",
+                      :path_encoding => 'ISO-8859-1'
+                      )
+      assert @repository
+      @repository.fetch_changesets
+      @repository.reload
+      assert_equal 0, @repository.changesets.count
+
+      get :destroy, :id => PRJ_ID
+      assert_response 302
+      @project.reload
+      assert_nil @project.repository
     end
 
     private

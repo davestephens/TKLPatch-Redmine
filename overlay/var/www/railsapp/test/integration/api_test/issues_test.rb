@@ -1,16 +1,16 @@
 # Redmine - project management software
-# Copyright (C) 2006-2010  Jean-Philippe Lang
+# Copyright (C) 2006-2011  Jean-Philippe Lang
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
@@ -40,20 +40,21 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
     :time_entries,
     :journals,
     :journal_details,
-    :queries
+    :queries,
+    :attachments
 
   def setup
     Setting.rest_api_enabled = '1'
   end
 
-  context "/index.xml" do
+  context "/issues" do
     # Use a private project to make sure auth is really working and not just
     # only showing public issues.
     should_allow_api_authentication(:get, "/projects/private-child/issues.xml")
-    
+
     should "contain metadata" do
       get '/issues.xml'
-      
+
       assert_tag :tag => 'issues',
         :attributes => {
           :type => 'array',
@@ -62,11 +63,11 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
           :offset => 0
         }
     end
-    
+
     context "with offset and limit" do
       should "use the params" do
         get '/issues.xml?offset=2&limit=3'
-        
+
         assert_equal 3, assigns(:limit)
         assert_equal 2, assigns(:offset)
         assert_tag :tag => 'issues', :children => {:count => 3, :only => {:tag => 'issue'}}
@@ -76,7 +77,7 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
     context "with nometa param" do
       should "not contain metadata" do
         get '/issues.xml?nometa=1'
-        
+
         assert_tag :tag => 'issues',
           :attributes => {
             :type => 'array',
@@ -90,7 +91,7 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
     context "with nometa header" do
       should "not contain metadata" do
         get '/issues.xml', {}, {'X-Redmine-Nometa' => '1'}
-        
+
         assert_tag :tag => 'issues',
           :attributes => {
             :type => 'array',
@@ -100,6 +101,63 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
           }
       end
     end
+
+    context "with relations" do
+      should "display relations" do
+        get '/issues.xml?include=relations'
+
+        assert_response :success
+        assert_equal 'application/xml', @response.content_type
+        assert_tag 'relations',
+          :parent => {:tag => 'issue', :child => {:tag => 'id', :content => '3'}},
+          :children => {:count => 1},
+          :child => {
+            :tag => 'relation',
+            :attributes => {:id => '2', :issue_id => '2', :issue_to_id => '3', :relation_type => 'relates'}
+          }
+        assert_tag 'relations',
+          :parent => {:tag => 'issue', :child => {:tag => 'id', :content => '1'}},
+          :children => {:count => 0}
+      end
+    end
+
+    context "with invalid query params" do
+      should "return errors" do
+        get '/issues.xml', {:f => ['start_date'], :op => {:start_date => '='}}
+
+        assert_response :unprocessable_entity
+        assert_equal 'application/xml', @response.content_type
+        assert_tag 'errors', :child => {:tag => 'error', :content => "Start date can't be blank"}
+      end
+    end
+
+    context "with custom field filter" do
+      should "show only issues with the custom field value" do
+        get '/issues.xml', { :set_filter => 1, :f => ['cf_1'], :op => {:cf_1 => '='}, :v => {:cf_1 => ['MySQL']}}
+
+        expected_ids = Issue.visible.all(
+            :include => :custom_values,
+            :conditions => {:custom_values => {:custom_field_id => 1, :value => 'MySQL'}}).map(&:id)
+
+        assert_select 'issues > issue > id', :count => expected_ids.count do |ids|
+           ids.each { |id| assert expected_ids.delete(id.children.first.content.to_i) }
+        end
+      end
+    end
+
+    context "with custom field filter (shorthand method)" do
+      should "show only issues with the custom field value" do
+        get '/issues.xml', { :cf_1 => 'MySQL' }
+
+        expected_ids = Issue.visible.all(
+            :include => :custom_values,
+            :conditions => {:custom_values => {:custom_field_id => 1, :value => 'MySQL'}}).map(&:id)
+
+        assert_select 'issues > issue > id', :count => expected_ids.count do |ids|
+          ids.each { |id| assert expected_ids.delete(id.children.first.content.to_i) }
+        end
+      end
+    end
   end
 
   context "/index.json" do
@@ -107,19 +165,18 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
   end
 
   context "/index.xml with filter" do
-    should_allow_api_authentication(:get, "/projects/private-child/issues.xml?status_id=5")
-
     should "show only issues with the status_id" do
       get '/issues.xml?status_id=5'
-      assert_tag :tag => 'issues',
-                 :children => { :count => Issue.visible.count(:conditions => {:status_id => 5}), 
-                                :only => { :tag => 'issue' } }
+
+      expected_ids = Issue.visible.all(:conditions => {:status_id => 5}).map(&:id)
+
+      assert_select 'issues > issue > id', :count => expected_ids.count do |ids|
+         ids.each { |id| assert expected_ids.delete(id.children.first.content.to_i) }
+      end
     end
   end
 
   context "/index.json with filter" do
-    should_allow_api_authentication(:get, "/projects/private-child/issues.json?status_id=5")
-
     should "show only issues with the status_id" do
       get '/issues.json?status_id=5'
 
@@ -139,13 +196,13 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
   context "/issues/6.json" do
     should_allow_api_authentication(:get, "/issues/6.json")
   end
-  
+
   context "GET /issues/:id" do
     context "with journals" do
       context ".xml" do
         should "display journals" do
           get '/issues/1.xml?include=journals'
-          
+
           assert_tag :tag => 'issue',
             :child => {
               :tag => 'journals',
@@ -174,13 +231,13 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
         end
       end
     end
-    
+
     context "with custom fields" do
       context ".xml" do
         should "display custom fields" do
           get '/issues/3.xml'
-          
-          assert_tag :tag => 'issue', 
+
+          assert_tag :tag => 'issue',
             :child => {
               :tag => 'custom_fields',
               :attributes => { :type => 'array' },
@@ -193,26 +250,51 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
                 }
               }
             }
-            
+
           assert_nothing_raised do
             Hash.from_xml(response.body).to_xml
           end
         end
       end
     end
-    
+
+    context "with attachments" do
+      context ".xml" do
+        should "display attachments" do
+          get '/issues/3.xml?include=attachments'
+
+          assert_tag :tag => 'issue',
+            :child => {
+              :tag => 'attachments',
+              :children => {:count => 5},
+              :child => {
+                :tag => 'attachment',
+                :child => {
+                  :tag => 'filename',
+                  :content => 'source.rb',
+                  :sibling => {
+                    :tag => 'content_url',
+                    :content => 'http://www.example.com/attachments/download/4/source.rb'
+                  }
+                }
+              }
+            }
+        end
+      end
+    end
+
     context "with subtasks" do
       setup do
         @c1 = Issue.generate!(:status_id => 1, :subject => "child c1", :tracker_id => 1, :project_id => 1, :parent_issue_id => 1)
         @c2 = Issue.generate!(:status_id => 1, :subject => "child c2", :tracker_id => 1, :project_id => 1, :parent_issue_id => 1)
         @c3 = Issue.generate!(:status_id => 1, :subject => "child c3", :tracker_id => 1, :project_id => 1, :parent_issue_id => @c1.id)
       end
-      
+
       context ".xml" do
         should "display children" do
           get '/issues/1.xml?include=children'
-          
-          assert_tag :tag => 'issue', 
+
+          assert_tag :tag => 'issue',
             :child => {
               :tag => 'children',
               :children => {:count => 2},
@@ -234,11 +316,11 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
               }
             }
         end
-        
+
         context ".json" do
           should "display children" do
             get '/issues/1.json?include=children'
-            
+
             json = ActiveSupport::JSON.decode(response.body)
             assert_equal([
               {
@@ -264,25 +346,20 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
       assert_difference('Issue.count') do
         post '/issues.xml', {:issue => {:project_id => 1, :subject => 'API test', :tracker_id => 2, :status_id => 3}}, :authorization => credentials('jsmith')
       end
-        
+
       issue = Issue.first(:order => 'id DESC')
       assert_equal 1, issue.project_id
       assert_equal 2, issue.tracker_id
       assert_equal 3, issue.status_id
       assert_equal 'API test', issue.subject
-  
+
       assert_response :created
       assert_equal 'application/xml', @response.content_type
       assert_tag 'issue', :child => {:tag => 'id', :content => issue.id.to_s}
     end
   end
-  
-  context "POST /issues.xml with failure" do
-    should_allow_api_authentication(:post,
-                                    '/issues.xml',
-                                    {:issue => {:project_id => 1}},
-                                    {:success_code => :unprocessable_entity})
 
+  context "POST /issues.xml with failure" do
     should "have an errors tag" do
       assert_no_difference('Issue.count') do
         post '/issues.xml', {:issue => {:project_id => 1}}, :authorization => credentials('jsmith')
@@ -302,22 +379,17 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
       assert_difference('Issue.count') do
         post '/issues.json', {:issue => {:project_id => 1, :subject => 'API test', :tracker_id => 2, :status_id => 3}}, :authorization => credentials('jsmith')
       end
-        
+
       issue = Issue.first(:order => 'id DESC')
       assert_equal 1, issue.project_id
       assert_equal 2, issue.tracker_id
       assert_equal 3, issue.status_id
       assert_equal 'API test', issue.subject
     end
-    
-  end
-  
-  context "POST /issues.json with failure" do
-    should_allow_api_authentication(:post,
-                                    '/issues.json',
-                                    {:issue => {:project_id => 1}},
-                                    {:success_code => :unprocessable_entity})
 
+  end
+
+  context "POST /issues.json with failure" do
     should "have an errors element" do
       assert_no_difference('Issue.count') do
         post '/issues.json', {:issue => {:project_id => 1}}, :authorization => credentials('jsmith')
@@ -334,7 +406,7 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
       @parameters = {:issue => {:subject => 'API update', :notes => 'A new note'}}
       @headers = { :authorization => credentials('jsmith') }
     end
-    
+
     should_allow_api_authentication(:put,
                                     '/issues/6.xml',
                                     {:issue => {:subject => 'API update', :notes => 'A new note'}},
@@ -354,47 +426,42 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
 
     should "add the note to the journal" do
       put '/issues/6.xml', @parameters, @headers
-      
+
       journal = Journal.last
       assert_equal "A new note", journal.notes
     end
 
     should "update the issue" do
       put '/issues/6.xml', @parameters, @headers
-      
+
       issue = Issue.find(6)
       assert_equal "API update", issue.subject
     end
-    
+
   end
-  
+
   context "PUT /issues/3.xml with custom fields" do
     setup do
       @parameters = {:issue => {:custom_fields => [{'id' => '1', 'value' => 'PostgreSQL' }, {'id' => '2', 'value' => '150'}]}}
       @headers = { :authorization => credentials('jsmith') }
     end
-    
+
     should "update custom fields" do
       assert_no_difference('Issue.count') do
         put '/issues/3.xml', @parameters, @headers
       end
-      
+
       issue = Issue.find(3)
       assert_equal '150', issue.custom_value_for(2).value
       assert_equal 'PostgreSQL', issue.custom_value_for(1).value
     end
   end
-  
+
   context "PUT /issues/6.xml with failed update" do
     setup do
       @parameters = {:issue => {:subject => ''}}
       @headers = { :authorization => credentials('jsmith') }
     end
-
-    should_allow_api_authentication(:put,
-                                    '/issues/6.xml',
-                                    {:issue => {:subject => ''}}, # Missing subject should fail
-                                    {:success_code => :unprocessable_entity})
 
     should "not create a new issue" do
       assert_no_difference('Issue.count') do
@@ -420,7 +487,7 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
       @parameters = {:issue => {:subject => 'API update', :notes => 'A new note'}}
       @headers = { :authorization => credentials('jsmith') }
     end
-    
+
     should_allow_api_authentication(:put,
                                     '/issues/6.json',
                                     {:issue => {:subject => 'API update', :notes => 'A new note'}},
@@ -440,30 +507,25 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
 
     should "add the note to the journal" do
       put '/issues/6.json', @parameters, @headers
-      
+
       journal = Journal.last
       assert_equal "A new note", journal.notes
     end
 
     should "update the issue" do
       put '/issues/6.json', @parameters, @headers
-      
+
       issue = Issue.find(6)
       assert_equal "API update", issue.subject
     end
-    
+
   end
-  
+
   context "PUT /issues/6.json with failed update" do
     setup do
       @parameters = {:issue => {:subject => ''}}
       @headers = { :authorization => credentials('jsmith') }
     end
-
-    should_allow_api_authentication(:put,
-                                    '/issues/6.json',
-                                    {:issue => {:subject => ''}}, # Missing subject should fail
-                                    {:success_code => :unprocessable_entity})
 
     should "not create a new issue" do
       assert_no_difference('Issue.count') do
@@ -495,7 +557,7 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
       assert_difference('Issue.count',-1) do
         delete '/issues/6.xml', {}, :authorization => credentials('jsmith')
       end
-      
+
       assert_nil Issue.find_by_id(6)
     end
   end
@@ -510,7 +572,7 @@ class ApiTest::IssuesTest < ActionController::IntegrationTest
       assert_difference('Issue.count',-1) do
         delete '/issues/6.json', {}, :authorization => credentials('jsmith')
       end
-      
+
       assert_nil Issue.find_by_id(6)
     end
   end

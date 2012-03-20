@@ -22,6 +22,11 @@
 #                                  create: create a user account
 #       --no-permission-check      disable permission checking when receiving
 #                                  the email
+#       --key-file=PATH            path to a file that contains the Redmine
+#                                  API key (use this option instead of --key
+#                                  if you don't the key to appear in the
+#                                  command line)
+#       --no-check-certificate     do not check server certificate
 #   -h, --help                     show this help
 #   -v, --verbose                  show extra information
 #   -V, --version                  show version information and exit
@@ -57,13 +62,16 @@ require 'rdoc/usage'
 
 module Net
   class HTTPS < HTTP
-    def self.post_form(url, params, headers)
+    def self.post_form(url, params, headers, options={})
       request = Post.new(url.path)
       request.form_data = params
       request.basic_auth url.user, url.password if url.user
       request.initialize_http_header(headers)
       http = new(url.host, url.port)
       http.use_ssl = (url.scheme == 'https')
+      if options[:no_check_certificate]
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      end
       http.start {|h| h.request(request) }
     end
   end
@@ -72,7 +80,7 @@ end
 class RedmineMailHandler
   VERSION = '0.1'
   
-  attr_accessor :verbose, :issue_attributes, :allow_override, :unknown_user, :no_permission_check, :url, :key
+  attr_accessor :verbose, :issue_attributes, :allow_override, :unknown_user, :no_permission_check, :url, :key, :no_check_certificate
 
   def initialize
     self.issue_attributes = {}
@@ -83,6 +91,7 @@ class RedmineMailHandler
       [ '--verbose',        '-v', GetoptLong::NO_ARGUMENT ],
       [ '--url',            '-u', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--key',            '-k', GetoptLong::REQUIRED_ARGUMENT],
+      [ '--key-file',             GetoptLong::REQUIRED_ARGUMENT],
       [ '--project',        '-p', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--status',         '-s', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--tracker',        '-t', GetoptLong::REQUIRED_ARGUMENT],
@@ -90,7 +99,8 @@ class RedmineMailHandler
       [ '--priority',             GetoptLong::REQUIRED_ARGUMENT],
       [ '--allow-override', '-o', GetoptLong::REQUIRED_ARGUMENT],
       [ '--unknown-user',         GetoptLong::REQUIRED_ARGUMENT],
-      [ '--no-permission-check',  GetoptLong::NO_ARGUMENT]
+      [ '--no-permission-check',  GetoptLong::NO_ARGUMENT],
+      [ '--no-check-certificate', GetoptLong::NO_ARGUMENT]
     )
 
     opts.each do |opt, arg|
@@ -99,6 +109,13 @@ class RedmineMailHandler
         self.url = arg.dup
       when '--key'
         self.key = arg.dup
+      when '--key-file'
+        begin
+          self.key = File.read(arg).strip
+        rescue Exception => e
+          $stderr.puts "Unable to read the key from #{arg}: #{e.message}"
+          exit 1
+        end
       when '--help'
         usage
       when '--verbose'
@@ -113,6 +130,8 @@ class RedmineMailHandler
         self.unknown_user = arg.dup
       when '--no-permission-check'
         self.no_permission_check = '1'
+      when '--no-check-certificate'
+        self.no_check_certificate = true
       end
     end
     
@@ -131,7 +150,7 @@ class RedmineMailHandler
     issue_attributes.each { |attr, value| data["issue[#{attr}]"] = value }
              
     debug "Posting to #{uri}..."
-    response = Net::HTTPS.post_form(URI.parse(uri), data, headers)
+    response = Net::HTTPS.post_form(URI.parse(uri), data, headers, :no_check_certificate => no_check_certificate)
     debug "Response received: #{response.code}"
     
     case response.code.to_i

@@ -8,7 +8,7 @@ begin
   require 'mocha'
 
   class GitAdapterTest < ActiveSupport::TestCase
-    REPOSITORY_PATH = RAILS_ROOT.gsub(%r{config\/\.\.}, '') + '/tmp/test/git_repository'
+    REPOSITORY_PATH = Rails.root.join('tmp/test/git_repository').to_s
 
     FELIX_UTF8 = "Felix Schäfer"
     FELIX_HEX  = "Felix Sch\xC3\xA4fer"
@@ -19,6 +19,14 @@ begin
     ## and these are incompatible with ASCII.
     # WINDOWS_PASS = Redmine::Platform.mswin?
     WINDOWS_PASS = false
+
+    ## Git, Mercurial and CVS path encodings are binary.
+    ## Subversion supports URL encoding for path.
+    ## Redmine Mercurial adapter and extension use URL encoding.
+    ## Git accepts only binary path in command line parameter.
+    ## So, there is no way to use binary command line parameter in JRuby.
+    JRUBY_SKIP     = (RUBY_PLATFORM == 'java')
+    JRUBY_SKIP_STR = "TODO: This test fails in JRuby"
 
     if File.directory?(REPOSITORY_PATH)
       def setup
@@ -53,12 +61,23 @@ begin
       end
 
       def test_branches
-        assert_equal  [
-              'latin-1-path-encoding',
-              'master',
-              'test-latin-1',
-              'test_branch',
-            ], @adapter.branches
+        brs = []
+        @adapter.branches.each do |b|
+          brs << b
+        end
+        assert_equal 4, brs.length
+        assert_equal 'latin-1-path-encoding', brs[0].to_s 
+        assert_equal '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127', brs[0].revision
+        assert_equal brs[0].scmid, brs[0].revision
+        assert_equal 'master', brs[1].to_s
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', brs[1].revision
+        assert_equal brs[1].scmid, brs[1].revision
+        assert_equal 'test-latin-1', brs[2].to_s
+        assert_equal '67e7792ce20ccae2e4bb73eed09bb397819c8834', brs[2].revision
+        assert_equal brs[2].scmid, brs[2].revision
+        assert_equal 'test_branch', brs[3].to_s
+        assert_equal 'fba357b886984ee71185ad2065e65fc0417d9b92', brs[3].revision
+        assert_equal brs[3].scmid, brs[3].revision
       end
 
       def test_tags
@@ -203,6 +222,32 @@ begin
                                            nil, nil, :all => true).length
       end
 
+      def test_parents
+        revs1 = []
+        @adapter.revisions('',
+                           nil,
+                           "master",
+                           {:reverse => true}) do |rev|
+          revs1 << rev
+        end
+        assert_equal 15, revs1.length
+        assert_equal "7234cb2750b63f47bff735edc50a1c0a433c2518",
+                     revs1[0].identifier
+        assert_equal nil, revs1[0].parents
+        assert_equal "899a15dba03a3b350b89c3f537e4bbe02a03cdc9",
+                     revs1[1].identifier
+        assert_equal 1, revs1[1].parents.length
+        assert_equal "7234cb2750b63f47bff735edc50a1c0a433c2518",
+                     revs1[1].parents[0]
+        assert_equal "32ae898b720c2f7eec2723d5bdd558b4cb2d3ddf",
+                     revs1[10].identifier
+        assert_equal 2, revs1[10].parents.length
+        assert_equal "4a07fe31bffcf2888791f3e6cbc9c4545cefe3e8",
+                     revs1[10].parents[0]
+        assert_equal "7e61ac704deecde634b51e59daa8110435dcb3da",
+                     revs1[10].parents[1]
+      end
+
       def test_getting_revisions_with_leading_and_trailing_spaces_in_filename
         assert_equal " filename with a leading space.txt ",
            @adapter.revisions(" filename with a leading space.txt ",
@@ -262,6 +307,8 @@ begin
       def test_latin_1_path
         if WINDOWS_PASS
           #
+        elsif JRUBY_SKIP
+          puts JRUBY_SKIP_STR
         else
           p2 = "latin-1-dir/test-#{@char_1}-2.txt"
           ['4fc55c43bf3d3dc2efb66145365ddc17639ce81e', '4fc55c43bf3'].each do |r1|
@@ -322,6 +369,8 @@ begin
       def test_entries_latin_1_dir
         if WINDOWS_PASS
           #
+        elsif JRUBY_SKIP
+          puts JRUBY_SKIP_STR
         else
           entries1 = @adapter.entries("latin-1-dir/test-#{@char_1}-subdir",
                                       '1ca7f5ed')
@@ -347,6 +396,34 @@ begin
                                   ""
                                 )
         assert_equal "UTF-8", adpt2.path_encoding
+      end
+
+      def test_cat_path_invalid
+        assert_nil @adapter.cat('invalid')
+      end
+
+      def test_cat_revision_invalid
+        assert     @adapter.cat('README')
+        assert_nil @adapter.cat('README', 'abcd1234efgh')
+      end
+
+      def test_diff_path_invalid
+        assert_equal [], @adapter.diff('invalid', '713f4944648826f5')
+      end
+
+      def test_diff_revision_invalid
+        assert_nil @adapter.diff(nil, 'abcd1234efgh')
+        assert_nil @adapter.diff(nil, '713f4944648826f5', 'abcd1234efgh')
+        assert_nil @adapter.diff(nil, 'abcd1234efgh', '713f4944648826f5')
+      end
+
+      def test_annotate_path_invalid
+        assert_nil @adapter.annotate('invalid')
+      end
+
+      def test_annotate_revision_invalid
+        assert     @adapter.annotate('README')
+        assert_nil @adapter.annotate('README', 'abcd1234efgh')
       end
 
       private

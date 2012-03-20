@@ -9,10 +9,10 @@ en:
       default: "%m/%d/%Y"
       short: "%b %d"
       long: "%B %d, %Y"
-      
+
     day_names: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
     abbr_day_names: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
-      
+
     # Don't forget the nil at the beginning; there's no such thing as a 0th month
     month_names: [~, January, February, March, April, May, June, July, August, September, October, November, December]
     abbr_month_names: [~, Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
@@ -30,7 +30,7 @@ en:
       long: "%B %d, %Y %H:%M"
     am: "am"
     pm: "pm"
-      
+
   datetime:
     distance_in_words:
       half_a_minute: "half a minute"
@@ -70,7 +70,7 @@ en:
 
   number:
     format:
-      separator: "." 
+      separator: "."
       delimiter: ""
       precision: 3
 
@@ -89,13 +89,12 @@ en:
           gb: "GB"
           tb: "TB"
 
-        
 # Used in array.to_sentence.
   support:
     array:
       sentence_connector: "and"
       skip_last_comma: false
-      
+
   activerecord:
     errors:
       template:
@@ -129,7 +128,7 @@ en:
         cant_link_an_issue_with_a_descendant: "An issue cannot be linked to one of its subtasks"
 
   actionview_instancetag_blank_option: Please select
-  
+
   general_text_No: 'No'
   general_text_Yes: 'Yes'
   general_text_no: 'no'
@@ -140,7 +139,7 @@ en:
   general_csv_encoding: ISO-8859-1
   general_pdf_encoding: UTF-8
   general_first_day_of_week: '7'
-  
+
   notice_account_updated: Account was successfully updated.
   notice_account_invalid_creditentials: Invalid user or password
   notice_account_password_updated: Password was successfully updated.
@@ -171,11 +170,13 @@ en:
   notice_unable_delete_time_entry: Unable to delete time log entry.
   notice_issue_done_ratios_updated: Issue done ratios updated.
   notice_gantt_chart_truncated: "The chart was truncated because it exceeds the maximum number of items that can be displayed (%{max})"
-  
+  notice_issue_successful_create: "Issue %{id} created."
+
   error_can_t_load_default_data: "Default configuration could not be loaded: %{value}"
   error_scm_not_found: "The entry or revision was not found in the repository."
   error_scm_command_failed: "An error occurred when trying to access the repository: %{value}"
   error_scm_annotate: "The entry does not exist or cannot be annotated."
+  error_scm_annotate_big_text_file: "The entry cannot be annotated, as it exceeds the maximum text file size."
   error_issue_not_found_in_project: 'The issue was not found or does not belong to this project'
   error_no_tracker_in_project: 'No tracker is associated to this project. Please check the Project settings.'
   error_no_default_issue_status: 'No default issue status is defined. Please check your configuration (Go to "Administration -> Issue statuses").'
@@ -189,8 +190,9 @@ en:
   error_workflow_copy_target: 'Please select target tracker(s) and role(s)'
   error_unable_delete_issue_status: 'Unable to delete issue status'
   error_unable_to_connect: "Unable to connect (%{value})"
+  error_attachment_too_big: "This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})"
   warning_attachments_not_saved: "%{count} file(s) could not be saved."
-  
+
   mail_subject_lost_password: "Your %{value} password"
   mail_body_lost_password: 'To change your password, click on the following link:'
   mail_subject_register: "Your %{value} account activation"
@@ -205,10 +207,10 @@ en:
   mail_body_wiki_content_added: "The '%{id}' wiki page has been added by %{author}."
   mail_subject_wiki_content_updated: "'%{id}' wiki page has been updated"
   mail_body_wiki_content_updated: "The '%{id}' wiki page has been updated by %{author}."
-  
+
   gui_validation_error: 1 error
   gui_validation_error_plural: "%{count} errors"
-  
+
   field_name: Name
   field_description: Description
   field_summary: Summary
@@ -322,7 +324,7 @@ en:
   setting_default_language: Default language
   setting_login_required: Authentication required
   setting_self_registration: Self-registration
-  setting_attachment_max_size: Attachment max. size
+  setting_attachment_max_size: Maximum attachment size
   setting_issues_export_limit: Issues export limit
   setting_mail_from: Emission email address
   setting_bcc_recipients: Blind carbon copy recipients (bcc)
@@ -330,9 +332,9 @@ en:
   setting_host_name: Host name and path
   setting_text_formatting: Text formatting
   setting_wiki_compression: Wiki history compression
-  setting_feeds_limit: Feed content limit
+  setting_feeds_limit: Maximum number of items in Atom feeds
   setting_default_projects_public: New projects are public by default
-  setting_autofetch_changesets: Autofetch commits
+  setting_autofetch_changesets: Fetch commits automatically
   setting_sys_api_enabled: Enable WS for repository management
   setting_commit_ref_keywords: Referencing keywords
   setting_commit_fix_keywords: Fixing keywords
@@ -341,7 +343,7 @@ en:
   setting_time_format: Time format
   setting_cross_project_issue_relations: Allow cross-project issue relations
   setting_issue_list_default_columns: Default columns displayed on the issue list
-  setting_repositories_encodings: Repositories encodings
+  setting_repositories_encodings: Attachments and repositories encodings
   setting_emails_header: Emails header
   setting_emails_footer: Emails footer
   setting_protocol: Protocol
@@ -356,8 +358,8 @@ en:
   setting_sequential_project_identifiers: Generate sequential project identifiers
   setting_gravatar_enabled: Use Gravatar user icons
   setting_gravatar_default: Default Gravatar image
-  setting_diff_max_lines_displayed: Max number of diff lines displayed
-  setting_file_max_size_displayed: Max size of text files displayed inline
+  setting_diff_max_lines_displayed: Maximum number of diff lines displayed
+  setting_file_max_size_displayed: Maximum size of text files displayed inline
   setting_repository_log_display_limit: Maximum number of revisions displayed on file log
   setting_openid: Allow OpenID login and registration
   setting_password_min_length: Minimum password length
@@ -373,7 +375,9 @@ en:
   setting_commit_logtime_enabled: Enable time logging
   setting_commit_logtime_activity_id: Activity for logged time
   setting_gantt_items_limit: Maximum number of items displayed on the gantt chart
-  
+  setting_issue_group_assignment: Allow issue assignment to groups
+  setting_default_issue_start_date_to_creation_date: Use current date as start date for new issues
+
   permission_add_project: Create project
   permission_add_subprojects: Create subprojects
   permission_edit_project: Edit project
@@ -431,7 +435,7 @@ en:
   permission_delete_own_messages: Delete own messages
   permission_export_wiki_pages: Export wiki pages
   permission_manage_subtasks: Manage subtasks
-  
+
   project_module_issue_tracking: Issue tracking
   project_module_time_tracking: Time tracking
   project_module_news: News
@@ -442,7 +446,7 @@ en:
   project_module_boards: Forums
   project_module_calendar: Calendar
   project_module_gantt: Gantt
-  
+
   label_user: User
   label_user_plural: Users
   label_user_new: New user
@@ -622,6 +626,7 @@ en:
   label_in_more_than: in more than
   label_greater_or_equal: '>='
   label_less_or_equal: '<='
+  label_between: between
   label_in: in
   label_today: today
   label_all_time: all time
@@ -645,7 +650,7 @@ en:
   label_modification: "%{count} change"
   label_modification_plural: "%{count} changes"
   label_branch: Branch
-  label_tag: Tag 
+  label_tag: Tag
   label_revision: Revision
   label_revision_plural: Revisions
   label_revision_id: "Revision %{value}"
@@ -692,6 +697,7 @@ en:
   label_statistics: Statistics
   label_commits_per_month: Commits per month
   label_commits_per_author: Commits per author
+  label_diff: diff
   label_view_diff: View differences
   label_diff_inline: inline
   label_diff_side_by_side: side by side
@@ -820,6 +826,9 @@ en:
   label_issues_visibility_public: All non private issues
   label_issues_visibility_own: Issues created by or assigned to the user
   label_git_report_last_commit: Report last commit for files and directories
+  label_parent_revision: Parent
+  label_child_revision: Child
+  label_export_options: %{export_format} export options
 
   button_login: Login
   button_submit: Submit
@@ -867,6 +876,8 @@ en:
   button_quote: Quote
   button_duplicate: Duplicate
   button_show: Show
+  button_edit_section: Edit this section
+  button_export: Export
 
   status_active: active
   status_registered: registered
@@ -942,8 +953,8 @@ en:
   text_zoom_out: Zoom out
   text_warn_on_leaving_unsaved: "The current page contains unsaved text that will be lost if you leave this page."
   text_scm_path_encoding_note: "Default: UTF-8"
-  text_git_repository_note: "Bare and local repository (e.g. /gitrepo, c:\gitrepo)"
-  text_mercurial_repository_note: "Local repository (e.g. /hgrepo, c:\hgrepo)"
+  text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
+  text_mercurial_repository_note: Local repository (e.g. /hgrepo, c:\hgrepo)
   text_scm_command: Command
   text_scm_command_version: Version
   text_scm_config: You can configure your scm commands in config/configuration.yml. Please restart the application after editing it.
@@ -975,3 +986,21 @@ en:
   enumeration_doc_categories: Document categories
   enumeration_activities: Activities (time tracking)
   enumeration_system_activity: System Activity
+  description_filter: Filter
+  description_search: Searchfield
+  description_choose_project: Projects
+  description_project_scope: Search scope
+  description_notes: Notes
+  description_message_content: Message content
+  description_query_sort_criteria_attribute: Sort attribute
+  description_query_sort_criteria_direction: Sort direction
+  description_user_mail_notification: Mail notification settings
+  description_available_columns: Available Columns
+  description_selected_columns: Selected Columns
+  description_all_columns: All Columns
+  description_issue_category_reassign: Choose issue category
+  description_wiki_subpages_reassign: Choose new parent page
+  description_date_range_list: Choose range from list
+  description_date_range_interval: Choose range by selecting start and end date
+  description_date_from: Enter start date
+  description_date_to: Enter end date

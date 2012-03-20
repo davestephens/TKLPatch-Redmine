@@ -22,7 +22,7 @@ class Issue < ActiveRecord::Base
   belongs_to :tracker
   belongs_to :status, :class_name => 'IssueStatus', :foreign_key => 'status_id'
   belongs_to :author, :class_name => 'User', :foreign_key => 'author_id'
-  belongs_to :assigned_to, :class_name => 'User', :foreign_key => 'assigned_to_id'
+  belongs_to :assigned_to, :class_name => 'Principal', :foreign_key => 'assigned_to_id'
   belongs_to :fixed_version, :class_name => 'Version', :foreign_key => 'fixed_version_id'
   belongs_to :priority, :class_name => 'IssuePriority', :foreign_key => 'priority_id'
   belongs_to :category, :class_name => 'IssueCategory', :foreign_key => 'category_id'
@@ -35,7 +35,7 @@ class Issue < ActiveRecord::Base
   has_many :relations_to, :class_name => 'IssueRelation', :foreign_key => 'issue_to_id', :dependent => :delete_all
 
   acts_as_nested_set :scope => 'root_id', :dependent => :destroy
-  acts_as_attachable :after_remove => :attachment_removed
+  acts_as_attachable :after_add => :attachment_added, :after_remove => :attachment_removed
   acts_as_customizable
   acts_as_watchable
   acts_as_searchable :columns => ['subject', "#{table_name}.description", "#{Journal.table_name}.notes"],
@@ -58,6 +58,7 @@ class Issue < ActiveRecord::Base
   validates_length_of :subject, :maximum => 255
   validates_inclusion_of :done_ratio, :in => 0..100
   validates_numericality_of :estimated_hours, :allow_nil => true
+  validate :validate_issue
 
   named_scope :visible, lambda {|*args| { :include => :project,
                                           :conditions => Issue.visible_condition(args.shift || User.current, *args) } }
@@ -93,9 +94,11 @@ class Issue < ActiveRecord::Base
       when 'all'
         nil
       when 'default'
-        "(#{table_name}.is_private = #{connection.quoted_false} OR #{table_name}.author_id = #{user.id} OR #{table_name}.assigned_to_id = #{user.id})"
+        user_ids = [user.id] + user.groups.map(&:id)
+        "(#{table_name}.is_private = #{connection.quoted_false} OR #{table_name}.author_id = #{user.id} OR #{table_name}.assigned_to_id IN (#{user_ids.join(',')}))"
       when 'own'
-        "(#{table_name}.author_id = #{user.id} OR #{table_name}.assigned_to_id = #{user.id})"
+        user_ids = [user.id] + user.groups.map(&:id)
+        "(#{table_name}.author_id = #{user.id} OR #{table_name}.assigned_to_id IN (#{user_ids.join(',')}))"
       else
         '1=0'
       end
@@ -109,9 +112,9 @@ class Issue < ActiveRecord::Base
       when 'all'
         true
       when 'default'
-        !self.is_private? || self.author == user || self.assigned_to == user
+        !self.is_private? || self.author == user || user.is_or_belongs_to?(assigned_to)
       when 'own'
-        self.author == user || self.assigned_to == user
+        self.author == user || user.is_or_belongs_to?(assigned_to)
       else
         false
       end
@@ -227,7 +230,7 @@ class Issue < ActiveRecord::Base
     @custom_field_values = nil
     result
   end
-  
+
   def description=(arg)
     if arg.is_a?(String)
       arg = arg.gsub(/(\r\n|\n|\r)/, "\r\n")
@@ -335,7 +338,7 @@ class Issue < ActiveRecord::Base
     Setting.issue_done_ratio == 'issue_field'
   end
 
-  def validate
+  def validate_issue
     if self.due_date.nil? && @attributes['due_date'] && !@attributes['due_date'].empty?
       errors.add :due_date, :not_a_date
     end
@@ -352,7 +355,7 @@ class Issue < ActiveRecord::Base
       if !assignable_versions.include?(fixed_version)
         errors.add :fixed_version_id, :inclusion
       elsif reopened? && fixed_version.closed?
-        errors.add_to_base I18n.t(:error_can_not_reopen_issue_on_closed_version)
+        errors.add :base, I18n.t(:error_can_not_reopen_issue_on_closed_version)
       end
     end
 
@@ -449,6 +452,7 @@ class Issue < ActiveRecord::Base
   def assignable_users
     users = project.assignable_users
     users << author if author
+    users << assigned_to if assigned_to
     users.uniq.sort
   end
 
@@ -482,7 +486,13 @@ class Issue < ActiveRecord::Base
     # Author and assignee are always notified unless they have been
     # locked or don't want to be notified
     notified << author if author && author.active? && author.notify_about?(self)
-    notified << assigned_to if assigned_to && assigned_to.active? && assigned_to.notify_about?(self)
+    if assigned_to
+      if assigned_to.is_a?(Group)
+        notified += assigned_to.users.select {|u| u.active? && u.notify_about?(self)}
+      else
+        notified << assigned_to if assigned_to.active? && assigned_to.notify_about?(self)
+      end
+    end
     notified.uniq!
     # Remove users that can not view the issue
     notified.reject! {|user| !visible?(user)}
@@ -499,7 +509,22 @@ class Issue < ActiveRecord::Base
   end
 
   def relations
-    (relations_from + relations_to).sort
+    @relations ||= (relations_from + relations_to).sort
+  end
+
+  # Preloads relations for a collection of issues
+  def self.load_relations(issues)
+    if issues.any?
+      relations = IssueRelation.all(:conditions => ["issue_from_id IN (:ids) OR issue_to_id IN (:ids)", {:ids => issues.map(&:id)}])
+      issues.each do |issue|
+        issue.instance_variable_set "@relations", relations.select {|r| r.issue_from_id == issue.id || r.issue_to_id == issue.id}
+      end
+    end
+  end
+
+  # Finds an issue relation given its id.
+  def find_relation(relation_id)
+    IssueRelation.find(relation_id, :conditions => ["issue_to_id = ? OR issue_from_id = ?", id, id])
   end
 
   def all_dependent_issues(except=[])
@@ -591,15 +616,13 @@ class Issue < ActiveRecord::Base
         @time_entry.project = project
         @time_entry.issue = self
         @time_entry.user = User.current
-        @time_entry.spent_on = Date.today
+        @time_entry.spent_on = User.current.today
         @time_entry.attributes = params[:time_entry]
         self.time_entries << @time_entry
       end
 
       if valid?
         attachments = Attachment.attach_files(self, params[:attachments])
-
-        attachments[:files].each {|a| @current_journal.details << JournalDetail.new(:property => 'attachment', :prop_key => a.id, :value => a.filename)}
         # TODO: Rename hook
         Redmine::Hook.call_hook(:controller_issues_edit_before_save, { :params => params, :issue => self, :time_entry => @time_entry, :journal => @current_journal})
         begin
@@ -611,7 +634,7 @@ class Issue < ActiveRecord::Base
           end
         rescue ActiveRecord::StaleObjectError
           attachments[:files].each(&:destroy)
-          errors.add_to_base l(:notice_locking_conflict)
+          errors.add :base, l(:notice_locking_conflict)
           raise ActiveRecord::Rollback
         end
       end
@@ -826,6 +849,13 @@ class Issue < ActiveRecord::Base
         issue.fixed_version = nil
         issue.save
       end
+    end
+  end
+
+  # Callback on attachment deletion
+  def attachment_added(obj)
+    if @current_journal && !obj.new_record?
+      @current_journal.details << JournalDetail.new(:property => 'attachment', :prop_key => obj.id, :value => obj.filename)
     end
   end
 

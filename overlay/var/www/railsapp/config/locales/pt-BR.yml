@@ -316,7 +316,6 @@ pt-BR:
   setting_time_format: Formato de hora
   setting_cross_project_issue_relations: Permitir relacionar tarefas entre projetos
   setting_issue_list_default_columns: Colunas padrão visíveis na lista de tarefas
-  setting_repositories_encodings: Codificação dos repositórios
   setting_emails_footer: Rodapé do e-mail
   setting_protocol: Protocolo
   setting_per_page_options: Número de itens exibidos por página
@@ -961,7 +960,7 @@ pt-BR:
   setting_commit_logtime_enabled: Habilitar registro de horas
   notice_gantt_chart_truncated: O gráfico foi cortado por exceder o tamanho máximo de linhas que podem ser exibidas (%{max})
   setting_gantt_items_limit: Número máximo de itens exibidos no gráfico gatt
-  field_warn_on_leaving_unsaved: Alertar-me ao sarir de uma página sem salvar o texto
+  field_warn_on_leaving_unsaved: Alertar-me ao sair de uma página sem salvar o texto
   text_warn_on_leaving_unsaved: A página atual contem texto que não foi salvo e será perdido se você sair desta página.
   label_my_queries: Minhas consultas personalizadas
   text_journal_changed_no_detail: "%{label} atualizado(a)"
@@ -990,10 +989,43 @@ pt-BR:
   field_root_directory: Diretório raiz
   field_cvs_module: Módulo
   field_cvsroot: CVSROOT
-  text_git_repository_note: Bare and local repository (e.g. /gitrepo, c:\gitrepo)
-  text_mercurial_repository_note: "repositório local (ex.: /hgrepo, c:\hgrepo)"
+  text_mercurial_repository_note: "Repositório local (ex.: /hgrepo, c:\\hgrepo)"
   text_scm_command: Comando
   text_scm_command_version: Versão
   label_git_report_last_commit: Relatar última alteração para arquivos e diretórios
   text_scm_config: Você pode configurar seus comandos de versionamento em config/configurations.yml. Por favor reinicie a aplicação após alterá-lo.
   text_scm_command_not_available: Comando de versionamento não disponível. Por favor verifique as configurações no painel de administração.
+  notice_issue_successful_create: Issue %{id} created.
+  label_between: between
+  setting_issue_group_assignment: Allow issue assignment to groups
+  label_diff: diff
+  text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
+
+  description_query_sort_criteria_direction: Sort direction
+  description_project_scope: Escopo da pesquisa
+  description_filter: Filtro
+  description_user_mail_notification: Configuração de notificações por e-mail
+  description_date_from: Digita a data inicial
+  description_message_content: Conteúdo da mensagem
+  description_available_columns: Colunas disponíveis
+  description_date_range_interval: Escolha um período selecionando a data de início e fim
+  description_issue_category_reassign: Escolha uma categoria de tarefas
+  description_search: Searchfield
+  description_notes: Notas
+  description_date_range_list: Escolha um período a partira da lista
+  description_choose_project: Projetos
+  description_date_to: Digite a data final
+  description_query_sort_criteria_attribute: Sort attribute
+  description_wiki_subpages_reassign: Escolha uma nova página pai
+  description_selected_columns: Colunas selecionadas
+
+  label_parent_revision: Parent
+  label_child_revision: Child
+  error_scm_annotate_big_text_file: The entry cannot be annotated, as it exceeds the maximum text file size.
+  setting_default_issue_start_date_to_creation_date: Usar data corrente como data inicial para novas tarefas
+  button_edit_section: Edit this section
+  setting_repositories_encodings: Attachments and repositories encodings
+  description_all_columns: All Columns
+  button_export: Export
+  label_export_options: "%{export_format} export options"
+  error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})

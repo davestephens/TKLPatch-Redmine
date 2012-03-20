@@ -20,17 +20,29 @@ class AttachmentsController < ApplicationController
   before_filter :file_readable, :read_authorize, :except => :destroy
   before_filter :delete_authorize, :only => :destroy
 
-  verify :method => :post, :only => :destroy
+  accept_api_auth :show, :download
 
   def show
-    if @attachment.is_diff?
-      @diff = File.new(@attachment.diskfile, "rb").read
-      render :action => 'diff'
-    elsif @attachment.is_text? && @attachment.filesize <= Setting.file_max_size_displayed.to_i.kilobyte
-      @content = File.new(@attachment.diskfile, "rb").read
-      render :action => 'file'
-    else
-      download
+    respond_to do |format|
+      format.html {
+        if @attachment.is_diff?
+          @diff = File.new(@attachment.diskfile, "rb").read
+          @diff_type = params[:type] || User.current.pref[:diff_type] || 'inline'
+          @diff_type = 'inline' unless %w(inline sbs).include?(@diff_type)
+          # Save diff type as user preference
+          if User.current.logged? && @diff_type != User.current.pref[:diff_type]
+            User.current.pref[:diff_type] = @diff_type
+            User.current.preference.save
+          end
+          render :action => 'diff'
+        elsif @attachment.is_text? && @attachment.filesize <= Setting.file_max_size_displayed.to_i.kilobyte
+          @content = File.new(@attachment.diskfile, "rb").read
+          render :action => 'file'
+        else
+          download
+        end
+      }
+      format.api
     end
   end
 
@@ -46,6 +58,7 @@ class AttachmentsController < ApplicationController
 
   end
 
+  verify :method => :delete, :only => :destroy
   def destroy
     # Make sure association callbacks are called
     @attachment.container.attachments.delete(@attachment)

@@ -59,6 +59,9 @@ namespace :locales do
   desc <<-END_DESC
 Removes a translation string from all locale file (only works for top-level childless non-multiline keys, probably doesn\'t work on windows).
 
+This task does not work on Ruby 1.8.6.
+You need to use Ruby 1.8.7 or later.
+
 Options:
   key=key_1,key_2    Comma-separated list of keys to delete
   skip=en,de         Comma-separated list of locale files to ignore (filename without extension)
@@ -111,6 +114,33 @@ END_DESC
           end
         end
       end
+    end
+  end
+
+  desc 'Check parsing yaml by psych library on Ruby 1.9.'
+
+  # On Fedora 12 and 13, if libyaml-devel is available,
+  # in case of installing by rvm,
+  # Ruby 1.9 default yaml library is psych.
+
+  task :check_parsing_by_psych do
+    begin
+      require 'psych'
+      parser = Psych::Parser.new
+      dir = ENV['DIR'] || './config/locales'
+      files = Dir.glob(File.join(dir,'*.yml'))
+      files.each do |filename|
+        next if File.directory? filename
+        puts "parsing #{filename}..."
+        begin
+          parser.parse File.open(filename)
+        rescue Exception => e1
+          puts(e1.message)
+          puts("")
+        end
+      end
+    rescue Exception => e
+      puts(e.message)
     end
   end
 end

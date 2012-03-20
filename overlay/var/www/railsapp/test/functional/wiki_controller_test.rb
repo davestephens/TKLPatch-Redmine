@@ -22,7 +22,9 @@ require 'wiki_controller'
 class WikiController; def rescue_action(e) raise e end; end
 
 class WikiControllerTest < ActionController::TestCase
-  fixtures :projects, :users, :roles, :members, :member_roles, :enabled_modules, :wikis, :wiki_pages, :wiki_contents, :wiki_content_versions, :attachments
+  fixtures :projects, :users, :roles, :members, :member_roles,
+           :enabled_modules, :wikis, :wiki_pages, :wiki_contents,
+           :wiki_content_versions, :attachments
 
   def setup
     @controller = WikiController.new
@@ -42,6 +44,13 @@ class WikiControllerTest < ActionController::TestCase
                :child => { :tag => 'li',
                            :child => { :tag => 'a', :attributes => { :href => '/projects/ecookbook/wiki/Page_with_an_inline_image' },
                                                     :content => 'Page with an inline image' } }
+  end
+  
+  def test_export_link
+    Role.anonymous.add_permission! :export_wiki_pages
+    get :show, :project_id => 'ecookbook'
+    assert_response :success
+    assert_tag 'a', :attributes => {:href => '/projects/ecookbook/wiki/CookBook_documentation.txt'}
   end
 
   def test_show_page_with_name
@@ -76,6 +85,38 @@ class WikiControllerTest < ActionController::TestCase
   def test_show_unexistent_page_without_edit_right
     get :show, :project_id => 1, :id => 'Unexistent page'
     assert_response 404
+  end
+  
+  def test_show_should_display_section_edit_links
+    @request.session[:user_id] = 2
+    get :show, :project_id => 1, :id => 'Page with sections'
+    assert_no_tag 'a', :attributes => {
+      :href => '/projects/ecookbook/wiki/Page_with_sections/edit?section=1'
+    }
+    assert_tag 'a', :attributes => {
+      :href => '/projects/ecookbook/wiki/Page_with_sections/edit?section=2'
+    }
+    assert_tag 'a', :attributes => {
+      :href => '/projects/ecookbook/wiki/Page_with_sections/edit?section=3'
+    }
+  end
+
+  def test_show_current_version_should_display_section_edit_links
+    @request.session[:user_id] = 2
+    get :show, :project_id => 1, :id => 'Page with sections', :version => 3
+
+    assert_tag 'a', :attributes => {
+      :href => '/projects/ecookbook/wiki/Page_with_sections/edit?section=2'
+    }
+  end
+
+  def test_show_old_version_should_not_display_section_edit_links
+    @request.session[:user_id] = 2
+    get :show, :project_id => 1, :id => 'Page with sections', :version => 2
+
+    assert_no_tag 'a', :attributes => {
+      :href => '/projects/ecookbook/wiki/Page_with_sections/edit?section=2'
+    }
   end
 
   def test_show_unexistent_page_with_edit_right
@@ -114,6 +155,44 @@ class WikiControllerTest < ActionController::TestCase
     page = Project.find(1).wiki.find_page('New page')
     assert_equal 1, page.attachments.count
     assert_equal 'testfile.txt', page.attachments.first.filename
+  end
+
+  def test_edit_page
+    @request.session[:user_id] = 2
+    get :edit, :project_id => 'ecookbook', :id => 'Another_page'
+
+    assert_response :success
+    assert_template 'edit'
+
+    assert_tag 'textarea',
+      :attributes => { :name => 'content[text]' },
+      :content => WikiPage.find_by_title('Another_page').content.text
+  end
+
+  def test_edit_section
+    @request.session[:user_id] = 2
+    get :edit, :project_id => 'ecookbook', :id => 'Page_with_sections', :section => 2
+
+    assert_response :success
+    assert_template 'edit'
+    
+    page = WikiPage.find_by_title('Page_with_sections')
+    section, hash = Redmine::WikiFormatting::Textile::Formatter.new(page.content.text).get_section(2)
+
+    assert_tag 'textarea',
+      :attributes => { :name => 'content[text]' },
+      :content => section
+    assert_tag 'input',
+      :attributes => { :name => 'section', :type => 'hidden', :value => '2' }
+    assert_tag 'input',
+      :attributes => { :name => 'section_hash', :type => 'hidden', :value => hash }
+  end
+
+  def test_edit_invalid_section_should_respond_with_404
+    @request.session[:user_id] = 2
+    get :edit, :project_id => 'ecookbook', :id => 'Page_with_sections', :section => 10
+
+    assert_response 404
   end
 
   def test_update_page
@@ -198,6 +277,83 @@ class WikiControllerTest < ActionController::TestCase
     assert_equal 2, c.version
   end
 
+  def test_update_section
+    @request.session[:user_id] = 2
+    page = WikiPage.find_by_title('Page_with_sections')
+    section, hash = Redmine::WikiFormatting::Textile::Formatter.new(page.content.text).get_section(2)
+    text = page.content.text
+
+    assert_no_difference 'WikiPage.count' do
+      assert_no_difference 'WikiContent.count' do
+        assert_difference 'WikiContent::Version.count' do
+          put :update, :project_id => 1, :id => 'Page_with_sections',
+            :content => {
+              :text => "New section content",
+              :version => 3
+            },
+            :section => 2,
+            :section_hash => hash
+        end
+      end
+    end
+    assert_redirected_to '/projects/ecookbook/wiki/Page_with_sections'
+    assert_equal Redmine::WikiFormatting::Textile::Formatter.new(text).update_section(2, "New section content"), page.reload.content.text
+  end
+
+  def test_update_section_should_allow_stale_page_update
+    @request.session[:user_id] = 2
+    page = WikiPage.find_by_title('Page_with_sections')
+    section, hash = Redmine::WikiFormatting::Textile::Formatter.new(page.content.text).get_section(2)
+    text = page.content.text
+
+    assert_no_difference 'WikiPage.count' do
+      assert_no_difference 'WikiContent.count' do
+        assert_difference 'WikiContent::Version.count' do
+          put :update, :project_id => 1, :id => 'Page_with_sections',
+            :content => {
+              :text => "New section content",
+              :version => 2 # Current version is 3
+            },
+            :section => 2,
+            :section_hash => hash
+        end
+      end
+    end
+    assert_redirected_to '/projects/ecookbook/wiki/Page_with_sections'
+    page.reload
+    assert_equal Redmine::WikiFormatting::Textile::Formatter.new(text).update_section(2, "New section content"), page.content.text
+    assert_equal 4, page.content.version
+  end
+
+  def test_update_section_should_not_allow_stale_section_update
+    @request.session[:user_id] = 2
+
+    assert_no_difference 'WikiPage.count' do
+      assert_no_difference 'WikiContent.count' do
+        assert_no_difference 'WikiContent::Version.count' do
+          put :update, :project_id => 1, :id => 'Page_with_sections',
+            :content => {
+              :comments => 'My comments',
+              :text => "Text should not be lost",
+              :version => 3
+            },
+            :section => 2,
+            :section_hash => Digest::MD5.hexdigest("wrong hash")
+        end
+      end
+    end
+    assert_response :success
+    assert_template 'edit'
+    assert_tag :div,
+      :attributes => { :class => /error/ },
+      :content => /Data has been updated by another user/
+    assert_tag 'textarea',
+      :attributes => { :name => 'content[text]' },
+      :content => /Text should not be lost/
+    assert_tag 'input',
+      :attributes => { :name => 'content[comments]', :value => 'My comments' }
+  end
+
   def test_preview
     @request.session[:user_id] = 2
     xhr :post, :preview, :project_id => 1, :id => 'CookBook_documentation',
@@ -250,7 +406,7 @@ class WikiControllerTest < ActionController::TestCase
     get :annotate, :project_id => 1, :id =>  'CookBook_documentation', :version => 2
     assert_response :success
     assert_template 'annotate'
-    
+
     # Line 1
     assert_tag :tag => 'tr', :child => {
       :tag => 'th', :attributes => {:class => 'line-num'}, :content => '1', :sibling => {
@@ -259,7 +415,7 @@ class WikiControllerTest < ActionController::TestCase
         }
       }
     }
-    
+
     # Line 5
     assert_tag :tag => 'tr', :child => {
       :tag => 'th', :attributes => {:class => 'line-num'}, :content => '5', :sibling => {
@@ -490,6 +646,36 @@ class WikiControllerTest < ActionController::TestCase
     assert_response :success
     assert_template 'show'
     assert_no_tag :tag => 'a', :attributes => { :href => '/projects/1/wiki/CookBook_documentation/edit' }
+  end
+
+  def test_show_pdf
+    @request.session[:user_id] = 2
+    get :show, :project_id => 1, :format => 'pdf'
+    assert_response :success
+    assert_not_nil assigns(:page)
+    assert_equal 'application/pdf', @response.content_type
+    assert_equal 'attachment; filename="CookBook_documentation.pdf"',
+                  @response.headers['Content-Disposition']
+  end
+
+  def test_show_html
+    @request.session[:user_id] = 2
+    get :show, :project_id => 1, :format => 'html'
+    assert_response :success
+    assert_not_nil assigns(:page)
+    assert_equal 'text/html', @response.content_type
+    assert_equal 'attachment; filename="CookBook_documentation.html"',
+                  @response.headers['Content-Disposition']
+  end
+
+  def test_show_txt
+    @request.session[:user_id] = 2
+    get :show, :project_id => 1, :format => 'txt'
+    assert_response :success
+    assert_not_nil assigns(:page)
+    assert_equal 'text/plain', @response.content_type
+    assert_equal 'attachment; filename="CookBook_documentation.txt"',
+                  @response.headers['Content-Disposition']
   end
 
   def test_edit_unprotected_page

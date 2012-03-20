@@ -1,7 +1,14 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class CalendarsControllerTest < ActionController::TestCase
-  fixtures :all
+  fixtures :projects,
+           :trackers,
+           :projects_trackers,
+           :roles,
+           :member_roles,
+           :members,
+           :auth_sources,
+           :enabled_modules
 
   def test_calendar
     get :show, :project_id => 1
@@ -9,7 +16,7 @@ class CalendarsControllerTest < ActionController::TestCase
     assert_template 'calendar'
     assert_not_nil assigns(:calendar)
   end
-  
+
   def test_cross_project_calendar
     get :show
     assert_response :success
@@ -20,19 +27,19 @@ class CalendarsControllerTest < ActionController::TestCase
   context "GET :show" do
     should "run custom queries" do
       @query = Query.generate_default!(:is_public => true)
-      
+
       get :show, :query_id => @query.id
       assert_response :success
     end
-    
+
   end
-  
+
   def test_week_number_calculation
     Setting.start_of_week = 7
-    
+
     get :show, :month => '1', :year => '2010'
     assert_response :success
-    
+
     assert_tag :tag => 'tr',
       :descendant => {:tag => 'td',
                       :attributes => {:class => 'week-number'}, :content => '53'},

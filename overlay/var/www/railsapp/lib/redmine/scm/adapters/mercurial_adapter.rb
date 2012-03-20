@@ -39,7 +39,7 @@ module Redmine
           end
 
           def sq_bin
-            @@sq_bin ||= shell_quote(HG_BIN)
+            @@sq_bin ||= shell_quote_command
           end
 
           def client_version
@@ -47,7 +47,7 @@ module Redmine
           end
 
           def client_available
-            client_version_above?([0, 9, 5])
+            client_version_above?([1, 2])
           end
 
           def hgversion
@@ -72,12 +72,7 @@ module Redmine
           end
 
           def template_path_for(version)
-            if ((version <=> [0,9,5]) > 0) || version.empty?
-              ver = "1.0"
-            else
-              ver = "0.9.5"
-            end
-            "#{HELPERS_DIR}/#{TEMPLATE_NAME}-#{ver}.#{TEMPLATE_EXTENSION}"
+            "#{HELPERS_DIR}/#{TEMPLATE_NAME}-1.0.#{TEMPLATE_EXTENSION}"
           end
         end
 
@@ -114,7 +109,14 @@ module Redmine
         end
 
         def branches
-          as_ary(summary['repository']['branch']).map { |e| e['name'] }
+          brs = []
+          as_ary(summary['repository']['branch']).each do |e|
+            br = Branch.new(e['name'])
+            br.revision =  e['revision']
+            br.scmid    =  e['node']
+            brs << br
+          end
+          brs
         end
 
         # Returns map of {'branch' => 'nodeid', ...}
@@ -215,12 +217,17 @@ module Redmine
                :from_path     => (cpmap.member?(p) ? with_leading_slash(cpmap[p]) : nil),
                :from_revision => (cpmap.member?(p) ? le['node'] : nil)}
             end.sort { |a, b| a[:path] <=> b[:path] }
+            parents_ary = []
+            as_ary(le['parents']['parent']).map do |par|
+              parents_ary << par['__content__'] if par['__content__'] != "000000000000"
+            end
             yield Revision.new(:revision => le['revision'],
                                :scmid    => le['node'],
                                :author   => (le['author']['__content__'] rescue ''),
                                :time     => Time.parse(le['date']['__content__']),
                                :message  => le['msg']['__content__'],
-                               :paths    => paths)
+                               :paths    => paths,
+                               :parents  => parents_ary)
           end
           self
         end
@@ -294,11 +301,14 @@ module Redmine
         # Runs 'hg' command with the given args
         def hg(*args, &block)
           repo_path = root_url || url
-          full_args = [HG_BIN, '-R', repo_path, '--encoding', 'utf-8']
+          full_args = ['-R', repo_path, '--encoding', 'utf-8']
           full_args << '--config' << "extensions.redminehelper=#{HG_HELPER_EXT}"
           full_args << '--config' << 'diff.git=false'
           full_args += args
-          ret = shellout(full_args.map { |e| shell_quote e.to_s }.join(' '), &block)
+          ret = shellout(
+                   self.class.sq_bin + ' ' + full_args.map { |e| shell_quote e.to_s }.join(' '),
+                   &block
+                   )
           if $? && $?.exitstatus != 0
             raise HgCommandAborted, "hg exited with non-zero status: #{$?.exitstatus}"
           end

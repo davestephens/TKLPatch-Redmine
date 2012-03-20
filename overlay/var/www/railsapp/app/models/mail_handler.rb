@@ -61,7 +61,7 @@ class MailHandler < ActionMailer::Base
       when 'accept'
         @user = User.anonymous
       when 'create'
-        @user = MailHandler.create_user_from_email(email)
+        @user = create_user_from_email(email)
         if @user
           logger.info "MailHandler: [#{@user.login}] account created" if logger && logger.info
           Mailer.deliver_account_information(@user, @user.password)
@@ -198,9 +198,9 @@ class MailHandler < ActionMailer::Base
   end
 
   def add_attachments(obj)
-    if email.has_attachments?
+    if email.attachments && email.attachments.any?
       email.attachments.each do |attachment|
-        Attachment.create(:container => obj,
+        obj.attachments << Attachment.create(:container => obj,
                           :file => attachment,
                           :author => user,
                           :content_type => attachment.content_type)
@@ -261,8 +261,7 @@ class MailHandler < ActionMailer::Base
 
   # Returns a Hash of issue attributes extracted from keywords in the email body
   def issue_attributes_from_keywords(issue)
-    assigned_to = (k = get_keyword(:assigned_to, :override => true)) && find_user_from_keyword(k)
-    assigned_to = nil if assigned_to && !issue.assignable_users.include?(assigned_to)
+    assigned_to = (k = get_keyword(:assigned_to, :override => true)) && find_assignee_from_keyword(k, issue)
 
     attrs = {
       'tracker_id' => (k = get_keyword(:tracker)) && issue.project.trackers.named(k).first.try(:id),
@@ -323,22 +322,53 @@ class MailHandler < ActionMailer::Base
     @full_sanitizer ||= HTML::FullSanitizer.new
   end
 
-  # Creates a user account for the +email+ sender
-  def self.create_user_from_email(email)
+  def self.assign_string_attribute_with_limit(object, attribute, value)
+    limit = object.class.columns_hash[attribute.to_s].limit || 255
+    value = value.to_s.slice(0, limit)
+    object.send("#{attribute}=", value)
+  end
+
+  # Returns a User from an email address and a full name
+  def self.new_user_from_attributes(email_address, fullname=nil)
+    user = User.new
+
+    # Truncating the email address would result in an invalid format
+    user.mail = email_address
+    assign_string_attribute_with_limit(user, 'login', email_address)
+
+    names = fullname.blank? ? email_address.gsub(/@.*$/, '').split('.') : fullname.split
+    assign_string_attribute_with_limit(user, 'firstname', names.shift)
+    assign_string_attribute_with_limit(user, 'lastname', names.join(' '))
+    user.lastname = '-' if user.lastname.blank?
+
+    password_length = [Setting.password_min_length.to_i, 10].max
+    user.password = ActiveSupport::SecureRandom.hex(password_length / 2 + 1)
+    user.language = Setting.default_language
+
+    unless user.valid?
+      user.login = "user#{ActiveSupport::SecureRandom.hex(6)}" if user.errors.on(:login)
+      user.firstname = "-" if user.errors.on(:firstname)
+      user.lastname = "-" if user.errors.on(:lastname)
+    end
+
+    user
+  end
+
+  # Creates a User for the +email+ sender
+  # Returns the user or nil if it could not be created
+  def create_user_from_email(email)
     addr = email.from_addrs.to_a.first
     if addr && !addr.spec.blank?
-      user = User.new
-      user.mail = addr.spec
-
-      names = addr.name.blank? ? addr.spec.gsub(/@.*$/, '').split('.') : addr.name.split
-      user.firstname = names.shift
-      user.lastname = names.join(' ')
-      user.lastname = '-' if user.lastname.blank?
-
-      user.login = user.mail
-      user.password = ActiveSupport::SecureRandom.hex(5)
-      user.language = Setting.default_language
-      user.save ? user : nil
+      user = self.class.new_user_from_attributes(addr.spec, addr.name)
+      if user.save
+        user
+      else
+        logger.error "MailHandler: failed to create User: #{user.errors.full_messages}" if logger
+        nil
+      end
+    else
+      logger.error "MailHandler: failed to create User: no FROM address found" if logger
+      nil
     end
   end
 
@@ -354,13 +384,18 @@ class MailHandler < ActionMailer::Base
     body.strip
   end
 
-  def find_user_from_keyword(keyword)
-    user ||= User.find_by_mail(keyword)
-    user ||= User.find_by_login(keyword)
-    if user.nil? && keyword.match(/ /)
+  def find_assignee_from_keyword(keyword, issue)
+    keyword = keyword.to_s.downcase
+    assignable = issue.assignable_users
+    assignee = nil
+    assignee ||= assignable.detect {|a| a.mail.to_s.downcase == keyword || a.login.to_s.downcase == keyword}
+    if assignee.nil? && keyword.match(/ /)
       firstname, lastname = *(keyword.split) # "First Last Throwaway"
-      user ||= User.find_by_firstname_and_lastname(firstname, lastname)
+      assignee ||= assignable.detect {|a| a.is_a?(User) && a.firstname.to_s.downcase == firstname && a.lastname.to_s.downcase == lastname}
     end
-    user
+    if assignee.nil?
+      assignee ||= assignable.detect {|a| a.is_a?(Group) && a.name.downcase == keyword}
+    end
+    assignee
   end
 end

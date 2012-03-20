@@ -1,16 +1,16 @@
-# redMine - project management software
-# Copyright (C) 2006  Jean-Philippe Lang
+# Redmine - project management software
+# Copyright (C) 2006-2011  Jean-Philippe Lang
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
@@ -18,26 +18,39 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class MemberTest < ActiveSupport::TestCase
-  fixtures :all
+  fixtures :projects, :trackers, :issue_statuses, :issues,
+           :enumerations, :users, :issue_categories,
+           :projects_trackers,
+           :roles,
+           :member_roles,
+           :members,
+           :enabled_modules,
+           :workflows,
+           :groups_users,
+           :watchers,
+           :journals, :journal_details,
+           :messages,
+           :wikis, :wiki_pages, :wiki_contents, :wiki_content_versions,
+           :boards
 
   def setup
     @jsmith = Member.find(1)
   end
-  
+
   def test_create
     member = Member.new(:project_id => 1, :user_id => 4, :role_ids => [1, 2])
     assert member.save
     member.reload
-    
+
     assert_equal 2, member.roles.size
     assert_equal Role.find(1), member.roles.sort.first
   end
 
-  def test_update    
+  def test_update
     assert_equal "eCookbook", @jsmith.project.name
     assert_equal "Manager", @jsmith.roles.first.name
     assert_equal "jsmith", @jsmith.user.login
-    
+
     @jsmith.mail_notification = !@jsmith.mail_notification
     assert @jsmith.save
   end
@@ -48,27 +61,44 @@ class MemberTest < ActiveSupport::TestCase
     assert @jsmith.save
     assert_equal 2, @jsmith.reload.roles.size
   end
-  
+
   def test_validate
     member = Member.new(:project_id => 1, :user_id => 2, :role_ids => [2])
     # same use can't have more than one membership for a project
     assert !member.save
-    
+
     member = Member.new(:project_id => 1, :user_id => 2, :role_ids => [])
     # must have one role at least
     assert !member.save
   end
-  
+
   def test_destroy
     assert_difference 'Member.count', -1 do
       assert_difference 'MemberRole.count', -1 do
         @jsmith.destroy
       end
     end
-    
+
     assert_raise(ActiveRecord::RecordNotFound) { Member.find(@jsmith.id) }
   end
-  
+
+  def test_sort_without_roles
+    a = Member.new(:roles => [Role.first])
+    b = Member.new
+
+    assert_equal -1, a <=> b
+    assert_equal 1,  b <=> a
+  end
+
+  def test_sort_without_principal
+    role = Role.first
+    a = Member.new(:roles => [role], :principal => User.first)
+    b = Member.new(:roles => [role])
+
+    assert_equal -1, a <=> b
+    assert_equal 1,  b <=> a
+  end
+
   context "removing permissions" do
     setup do
       Watcher.delete_all("user_id = 9")
@@ -81,12 +111,12 @@ class MemberTest < ActiveSupport::TestCase
       Watcher.create!(:watchable => Wiki.find(2), :user => user)
       Watcher.create!(:watchable => WikiPage.find(3), :user => user)
     end
-    
+
     context "of user" do
       setup do
         @member = Member.create!(:project => Project.find(2), :principal => User.find(9), :role_ids => [1, 2])
       end
-      
+
       context "by deleting membership" do
         should "prune watchers" do
           assert_difference 'Watcher.count', -4 do
@@ -94,7 +124,7 @@ class MemberTest < ActiveSupport::TestCase
           end
         end
       end
-      
+
       context "by updating roles" do
         should "prune watchers" do
           Role.find(2).remove_permission! :view_wiki_pages
@@ -107,7 +137,7 @@ class MemberTest < ActiveSupport::TestCase
         end
       end
     end
-    
+
     context "of group" do
       setup do
         group = Group.find(10)
@@ -121,7 +151,7 @@ class MemberTest < ActiveSupport::TestCase
             @member.destroy
           end
         end
-      end  
+      end
 
       context "by updating roles" do
         should "prune watchers" do

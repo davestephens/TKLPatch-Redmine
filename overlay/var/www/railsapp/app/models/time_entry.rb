@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class TimeEntry < ActiveRecord::Base
+  include Redmine::SafeAttributes
   # could have used polymorphic association
   # project association here allows easy loading of time entries at project level with one database trip
   belongs_to :project
@@ -38,11 +39,15 @@ class TimeEntry < ActiveRecord::Base
   validates_presence_of :user_id, :activity_id, :project_id, :hours, :spent_on
   validates_numericality_of :hours, :allow_nil => true, :message => :invalid
   validates_length_of :comments, :maximum => 255, :allow_nil => true
+  before_validation :set_project_if_nil
+  validate :validate_time_entry
 
   named_scope :visible, lambda {|*args| {
     :include => :project,
     :conditions => Project.allowed_to_condition(args.shift || User.current, :view_time_entries, *args)
   }}
+
+  safe_attributes 'hours', 'comments', 'issue_id', 'activity_id', 'spent_on', 'custom_field_values'
 
   def after_initialize
     if new_record? && self.activity.nil?
@@ -53,11 +58,11 @@ class TimeEntry < ActiveRecord::Base
     end
   end
 
-  def before_validation
+  def set_project_if_nil
     self.project = issue.project if issue && project.nil?
   end
 
-  def validate
+  def validate_time_entry
     errors.add :hours, :invalid if hours && (hours < 0 || hours >= 1000)
     errors.add :project_id, :invalid if project.nil?
     errors.add :issue_id, :invalid if (issue_id && !issue) || (issue && project!=issue.project)
@@ -82,14 +87,6 @@ class TimeEntry < ActiveRecord::Base
   # Returns true if the time entry can be edited by usr, otherwise false
   def editable_by?(usr)
     (usr == user && usr.allowed_to?(:edit_own_time_entries, project)) || usr.allowed_to?(:edit_time_entries, project)
-  end
-
-  # TODO: remove this method in 1.3.0
-  def self.visible_by(usr)
-    ActiveSupport::Deprecation.warn "TimeEntry.visible_by is deprecated and will be removed in Redmine 1.3.0. Use the visible scope instead."
-    with_scope(:find => { :conditions => Project.allowed_to_condition(usr, :view_time_entries) }) do
-      yield
-    end
   end
 
   def self.earilest_date_for_project(project=nil)

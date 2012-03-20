@@ -344,7 +344,6 @@ de:
   setting_time_format: Zeitformat
   setting_cross_project_issue_relations: Ticket-Beziehungen zwischen Projekten erlauben
   setting_issue_list_default_columns: Default-Spalten in der Ticket-Auflistung
-  setting_repositories_encodings: Kodierungen der Projektarchive
   setting_emails_footer: E-Mail-Fußzeile
   setting_protocol: Protokoll
   setting_per_page_options: Objekte pro Seite
@@ -987,7 +986,6 @@ de:
   field_root_directory: Wurzelverzeichnis
   field_cvs_module: Modul
   field_cvsroot: CVSROOT
-  text_git_repository_note: Bare und lokales repository (e.g. /gitrepo, c:\gitrepo)
   text_mercurial_repository_note: Lokales repository (e.g. /hgrepo, c:\hgrepo)
   text_scm_command: Kommando
   text_scm_command_version: Version
@@ -995,3 +993,37 @@ de:
   text_scm_config: Die SCM-Kommandos können in der in config/configuration.yml konfiguriert werden. Redmine muss anschließend neu gestartet werden.
   text_scm_command_not_available: Scm Kommando ist nicht verfügbar. Bitte prüfen Sie die Einstellungen im Administrationspanel.
 
+  notice_issue_successful_create: Issue %{id} created.
+  label_between: between
+  setting_issue_group_assignment: Allow issue assignment to groups
+  label_diff: diff
+  text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
+
+  description_filter: Filter
+  description_search: Suchfeld
+  description_choose_project: Projekte
+  description_project_scope: Suchbereich
+  description_notes: Kommentare
+  description_message_content: Nachrichteninhalt
+  description_query_sort_criteria_attribute: Sortierattribut
+  description_query_sort_criteria_direction: Sortierrichtung
+  description_user_mail_notification: Mailbenachrichtigungseinstellung
+  description_available_columns: Verfügbare Spalten
+  description_selected_columns: Ausgewählte Spalten
+  description_issue_category_reassign: Neue Kategorie wählen
+  description_wiki_subpages_reassign: Neue Elternseite wählen
+  description_date_range_list: Zeitraum aus einer Liste wählen
+  description_date_range_interval: Zeitraum durch Start- und Enddatum festlegen
+  description_date_from: Startdatum eintragen
+  description_date_to: Enddatum eintragen
+
+  label_parent_revision: Parent
+  label_child_revision: Child
+  error_scm_annotate_big_text_file: The entry cannot be annotated, as it exceeds the maximum text file size.
+  setting_default_issue_start_date_to_creation_date: Use current date as start date for new issues
+  button_edit_section: Edit this section
+  setting_repositories_encodings: Attachments and repositories encodings
+  description_all_columns: All Columns
+  button_export: Export
+  label_export_options: "%{export_format} export options"
+  error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})

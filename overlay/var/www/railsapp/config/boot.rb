@@ -1,6 +1,11 @@
 # Don't change this file!
 # Configure your app in config/environment.rb and config/environments/*.rb
 
+if RUBY_VERSION >= '1.9'
+  require 'yaml'
+  YAML::ENGINE.yamler = 'syck'
+end
+
 RAILS_ROOT = "#{File.dirname(__FILE__)}/.." unless defined?(RAILS_ROOT)
 
 module Rails
@@ -62,8 +67,12 @@ module Rails
         gem 'rails'
       end
     rescue Gem::LoadError => load_error
-      $stderr.puts %(Missing the Rails #{version} gem. Please `gem install -v=#{version} rails`, update your RAILS_GEM_VERSION setting in config/environment.rb for the Rails version you do have installed, or comment out RAILS_GEM_VERSION to use the latest version installed.)
-      exit 1
+      if load_error.message =~ /Could not find RubyGem rails/
+        STDERR.puts %(Missing the Rails #{version} gem. Please `gem install -v=#{version} rails`, update your RAILS_GEM_VERSION setting in config/environment.rb for the Rails version you do have installed, or comment out RAILS_GEM_VERSION to use the latest version installed.)
+        exit 1
+      else
+        raise
+      end
     end
 
     class << self
@@ -104,18 +113,6 @@ module Rails
         end
     end
   end
-end
-
-# TODO: Workaround for #7013 to be removed for 1.2.0
-# Loads i18n 0.4.2 before Rails loads any more recent gem
-# 0.5.0 is not compatible with the old interpolation syntax
-# Plugins will have to migrate to the new syntax for 1.2.0
-require 'rubygems'
-begin
-  gem 'i18n', '0.4.2'
-rescue Gem::LoadError => load_error
-  $stderr.puts %(Missing the i18n 0.4.2 gem. Please `gem install -v=0.4.2 i18n`)
-  exit 1
 end
 
 # All that for this:

@@ -74,7 +74,7 @@ class Mailer < ActionMailer::Base
     subject s
     body :issue => issue,
          :journal => journal,
-         :issue_url => url_for(:controller => 'issues', :action => 'show', :id => issue)
+         :issue_url => url_for(:controller => 'issues', :action => 'show', :id => issue, :anchor => "change-#{journal.id}")
 
     render_multipart('issue_edit', body)
   end
@@ -85,7 +85,9 @@ class Mailer < ActionMailer::Base
     subject l(:mail_subject_reminder, :count => issues.size, :days => days)
     body :issues => issues,
          :days => days,
-         :issues_url => url_for(:controller => 'issues', :action => 'index', :set_filter => 1, :assigned_to_id => user.id, :sort => 'due_date:asc')
+         :issues_url => url_for(:controller => 'issues', :action => 'index',
+                                :set_filter => 1, :assigned_to_id => user.id,
+                                :sort => 'due_date:asc')
     render_multipart('reminder', body)
   end
 
@@ -198,7 +200,9 @@ class Mailer < ActionMailer::Base
     cc(wiki_content.page.wiki.watcher_recipients - recipients)
     subject "[#{wiki_content.project.name}] #{l(:mail_subject_wiki_content_added, :id => wiki_content.page.pretty_title)}"
     body :wiki_content => wiki_content,
-         :wiki_content_url => url_for(:controller => 'wiki', :action => 'show', :project_id => wiki_content.project, :id => wiki_content.page.title)
+         :wiki_content_url => url_for(:controller => 'wiki', :action => 'show',
+                                      :project_id => wiki_content.project,
+                                      :id => wiki_content.page.title)
     render_multipart('wiki_content_added', body)
   end
 
@@ -215,8 +219,12 @@ class Mailer < ActionMailer::Base
     cc(wiki_content.page.wiki.watcher_recipients + wiki_content.page.watcher_recipients - recipients)
     subject "[#{wiki_content.project.name}] #{l(:mail_subject_wiki_content_updated, :id => wiki_content.page.pretty_title)}"
     body :wiki_content => wiki_content,
-         :wiki_content_url => url_for(:controller => 'wiki', :action => 'show', :project_id => wiki_content.project, :id => wiki_content.page.title),
-         :wiki_diff_url => url_for(:controller => 'wiki', :action => 'diff', :project_id => wiki_content.project, :id => wiki_content.page.title, :version => wiki_content.version)
+         :wiki_content_url => url_for(:controller => 'wiki', :action => 'show',
+                                      :project_id => wiki_content.project,
+                                      :id => wiki_content.page.title),
+         :wiki_diff_url => url_for(:controller => 'wiki', :action => 'diff',
+                                   :project_id => wiki_content.project, :id => wiki_content.page.title,
+                                   :version => wiki_content.version)
     render_multipart('wiki_content_updated', body)
   end
 
@@ -245,7 +253,9 @@ class Mailer < ActionMailer::Base
     recipients User.active.find(:all, :conditions => {:admin => true}).collect { |u| u.mail }.compact
     subject l(:mail_subject_account_activation_request, Setting.app_title)
     body :user => user,
-         :url => url_for(:controller => 'users', :action => 'index', :status => User::STATUS_REGISTERED, :sort_key => 'created_on', :sort_order => 'desc')
+         :url => url_for(:controller => 'users', :action => 'index',
+                         :status => User::STATUS_REGISTERED,
+                         :sort_key => 'created_on', :sort_order => 'desc')
     render_multipart('account_activation_request', body)
   end
 
@@ -368,7 +378,7 @@ class Mailer < ActionMailer::Base
     headers 'X-Mailer' => 'Redmine',
             'X-Redmine-Host' => Setting.host_name,
             'X-Redmine-Site' => Setting.app_title,
-            'Precedence' => 'bulk',
+            'X-Auto-Response-Suppress' => 'OOF',
             'Auto-Submitted' => 'auto-generated'
   end
 
@@ -410,11 +420,16 @@ class Mailer < ActionMailer::Base
   def render_multipart(method_name, body)
     if Setting.plain_text_mail?
       content_type "text/plain"
-      body render(:file => "#{method_name}.text.plain.rhtml", :body => body, :layout => 'mailer.text.plain.erb')
+      body render(:file => "#{method_name}.text.erb",
+                  :body => body,
+                  :layout => 'mailer.text.erb')
     else
       content_type "multipart/alternative"
-      part :content_type => "text/plain", :body => render(:file => "#{method_name}.text.plain.rhtml", :body => body, :layout => 'mailer.text.plain.erb')
-      part :content_type => "text/html", :body => render_message("#{method_name}.text.html.rhtml", body)
+      part :content_type => "text/plain",
+           :body => render(:file => "#{method_name}.text.erb",
+                           :body => body, :layout => 'mailer.text.erb')
+      part :content_type => "text/html",
+           :body => render_message("#{method_name}.html.erb", body)
     end
   end
 
@@ -446,7 +461,7 @@ class Mailer < ActionMailer::Base
   end
 
   def mylogger
-    RAILS_DEFAULT_LOGGER
+    Rails.logger
   end
 end
 

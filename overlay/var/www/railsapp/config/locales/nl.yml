@@ -123,7 +123,7 @@ nl:
         greater_than_start_date: "moet na de startdatum liggen"
         not_same_project: "hoort niet bij hetzelfde project"
         circular_dependency: "Deze relatie zou een circulaire afhankelijkheid tot gevolg hebben"
-        cant_link_an_issue_with_a_descendant: "An issue can not be linked to one of its subtasks"
+        cant_link_an_issue_with_a_descendant: "Een issue kan niet gelinked worden met een subtask"
 
   actionview_instancetag_blank_option: Selecteer
   
@@ -703,7 +703,7 @@ nl:
   setting_bcc_recipients: Blind carbon copy ontvangers (bcc)
   setting_commit_fix_keywords: Gefixeerde trefwoorden
   setting_commit_ref_keywords: Refererende trefwoorden
-  setting_cross_project_issue_relations: Sta crossproject issuerelaties toe
+  setting_cross_project_issue_relations: Sta cross-project issuerelaties toe
   setting_date_format: Datumformaat
   setting_default_language: Standaard taal
   setting_default_projects_public: Nieuwe projecten zijn standaard publiek
@@ -723,7 +723,6 @@ nl:
   setting_per_page_options: Aantal objecten per pagina (opties)
   setting_plain_text_mail: platte tekst (geen HTML)
   setting_protocol: Protocol
-  setting_repositories_encodings: Repositories coderingen
   setting_self_registration: Zelfregistratie toegestaan
   setting_sequential_project_identifiers: Genereer sequentiële projectidentiteiten
   setting_sys_api_enabled: Gebruik WS voor repository beheer
@@ -908,8 +907,8 @@ nl:
   label_user_mail_option_only_my_events: Alleen voor dingen die ik volg of bij betrokken ben
   label_user_mail_option_only_assigned: Alleen voor dingen die aan mij zijn toegewezen
   label_user_mail_option_none: Bij geen enkele gebeurtenis
-  field_member_of_group: Assignee's group
-  field_assigned_to_role: Assignee's role
+  field_member_of_group: Groep van toegewezene
+  field_assigned_to_role: Rol van toegewezene
   notice_not_authorized_archived_project: Het project dat u wilt bezoeken is gearchiveerd.
   label_principal_search: "Zoek naar gebruiker of groep:"
   label_user_search: "Zoek naar gebruiker:"
@@ -925,10 +924,10 @@ nl:
   label_my_queries: Mijn aangepaste zoekopdrachten
   text_journal_changed_no_detail: "%{label} updated"
   label_news_comment_added: Commentaar toegevoegd aan een nieuwsitem
-  button_expand_all: Expand all
-  button_collapse_all: Collapse all
-  label_additional_workflow_transitions_for_assignee: Additional transitions allowed when the user is the assignee
-  label_additional_workflow_transitions_for_author: Additional transitions allowed when the user is the author
+  button_expand_all: Klap uit
+  button_collapse_all: Klap in
+  label_additional_workflow_transitions_for_assignee: Aanvullende veranderingen toegestaan wanneer de gebruiker de toegewezene is
+  label_additional_workflow_transitions_for_author: Aanvullende veranderingen toegestaan wanneer de gebruiker de auteur is
   label_bulk_edit_selected_time_entries: Bulk edit selected time entries
   text_time_entries_destroy_confirmation: Are you sure you want to delete the selected time entr(y/ies)?
   label_role_anonymous: Anonymous
@@ -946,15 +945,46 @@ nl:
   text_issues_destroy_descendants_confirmation: This will also delete %{count} subtask(s).
   field_commit_logs_encoding: Encodering van commit berichten
   field_scm_path_encoding: Path encoding
-  text_scm_path_encoding_note: "Default: UTF-8"
+  text_scm_path_encoding_note: "Standaard: UTF-8"
   field_path_to_repository: Path to repository
   field_root_directory: Root directory
   field_cvs_module: Module
   field_cvsroot: CVSROOT
-  text_git_repository_note: Bare and local repository (e.g. /gitrepo, c:\gitrepo)
   text_mercurial_repository_note: Local repository (e.g. /hgrepo, c:\hgrepo)
   text_scm_command: Command
   text_scm_command_version: Version
   label_git_report_last_commit: Report last commit for files and directories
   text_scm_config: You can configure your scm commands in config/configuration.yml. Please restart the application after editing it.
   text_scm_command_not_available: Scm command is not available. Please check settings on the administration panel.
+  notice_issue_successful_create: Issue %{id} created.
+  label_between: between
+  setting_issue_group_assignment: Allow issue assignment to groups
+  label_diff: diff
+  text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
+  description_query_sort_criteria_direction: Sort direction
+  description_project_scope: Search scope
+  description_filter: Filter
+  description_user_mail_notification: Mail notification settings
+  description_date_from: Enter start date
+  description_message_content: Message content
+  description_available_columns: Available Columns
+  description_date_range_interval: Choose range by selecting start and end date
+  description_issue_category_reassign: Choose issue category
+  description_search: Searchfield
+  description_notes: Notes
+  description_date_range_list: Choose range from list
+  description_choose_project: Projects
+  description_date_to: Enter end date
+  description_query_sort_criteria_attribute: Sort attribute
+  description_wiki_subpages_reassign: Choose new parent page
+  description_selected_columns: Selected Columns
+  label_parent_revision: Parent
+  label_child_revision: Child
+  error_scm_annotate_big_text_file: The entry cannot be annotated, as it exceeds the maximum text file size.
+  setting_default_issue_start_date_to_creation_date: Use current date as start date for new issues
+  button_edit_section: Edit this section
+  setting_repositories_encodings: Attachments and repositories encodings
+  description_all_columns: All Columns
+  button_export: Export
+  label_export_options: "%{export_format} export options"
+  error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})

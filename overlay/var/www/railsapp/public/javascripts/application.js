@@ -86,26 +86,36 @@ function hideFieldset(el) {
 var fileFieldCount = 1;
 
 function addFileField() {
-    if (fileFieldCount >= 10) return false
-    fileFieldCount++;
-    var f = document.createElement("input");
-    f.type = "file";
-    f.name = "attachments[" + fileFieldCount + "][file]";
-    f.size = 30;
-    var d = document.createElement("input");
-    d.type = "text";
-    d.name = "attachments[" + fileFieldCount + "][description]";
-    d.size = 60;
-    var dLabel = new Element('label');
-    dLabel.addClassName('inline');
-    // Pulls the languge value used for Optional Description
-    dLabel.update($('attachment_description_label_content').innerHTML)
-    p = document.getElementById("attachments_fields");
-    p.appendChild(document.createElement("br"));
-    p.appendChild(f);
-    p.appendChild(dLabel);
-    dLabel.appendChild(d);
+  var fields = $('attachments_fields');
+  if (fields.childElements().length >= 10) return false;
+  fileFieldCount++;
+  var s = new Element('span');
+  s.update(fields.down('span').innerHTML);
+  s.down('input.file').name = "attachments[" + fileFieldCount + "][file]";
+  s.down('input.description').name = "attachments[" + fileFieldCount + "][description]";
+  fields.appendChild(s);
+}
 
+function removeFileField(el) {
+  var fields = $('attachments_fields');
+	var s = Element.up(el, 'span');
+	if (fields.childElements().length > 1) {
+		s.remove();
+	} else {
+		s.update(s.innerHTML);
+	}
+}
+
+function checkFileSize(el, maxSize, message) {
+  var files = el.files;
+  if (files) {
+    for (var i=0; i<files.length; i++) {
+      if (files[i].size > maxSize) {
+        alert(message);
+        el.value = "";
+      }
+    }
+  }
 }
 
 function showTab(name) {
@@ -188,6 +198,39 @@ function promptToRemote(text, param, url) {
     }
 }
 
+function showModal(id, width) {
+  el = $(id);
+	if (el == undefined || el.visible()) {return;}
+  var h = $$('body')[0].getHeight();
+  var d = document.createElement("div");
+  d.id = 'modalbg';
+  $('main').appendChild(d);
+  $('modalbg').setStyle({ width: '100%', height: h + 'px' });
+  $('modalbg').show();
+
+  var pageWidth = document.viewport.getWidth();
+	el.setStyle({'width': width});
+	el.setStyle({'left': (((pageWidth - el.getWidth())/2  *100) / pageWidth) + '%'});
+  el.addClassName('modal');
+	el.show();
+
+  var submit = el.down("input[type=submit]");
+	if (submit) {
+  	submit.focus();
+  }
+}
+
+function hideModal(el) {
+  var modal = Element.up(el, 'div.modal');
+	if (modal) {
+		modal.hide();
+	}
+	var bg = $('modalbg');
+	if (bg) {
+  	bg.remove();
+  }
+}
+
 function collapseScmEntry(id) {
     var els = document.getElementsByClassName(id, 'browser');
 	for (var i = 0; i < els.length; i++) {
@@ -250,6 +293,7 @@ function observeParentIssueField(url) {
                          { minChars: 3,
                            frequency: 0.5,
                            paramName: 'q',
+                           method: 'get',
                            updateElement: function(value) {
                              document.getElementById('issue_parent_issue_id').value = value.id;
                            }});
@@ -262,6 +306,7 @@ function observeRelatedIssueField(url) {
                          { minChars: 3,
                            frequency: 0.5,
                            paramName: 'q',
+                           method: 'get',
                            updateElement: function(value) {
                              document.getElementById('relation_issue_to_id').value = value.id;
                            },

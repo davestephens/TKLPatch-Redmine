@@ -132,7 +132,7 @@ es:
         greater_than_start_date: "debe ser posterior a la fecha de comienzo"
         not_same_project: "no pertenece al mismo proyecto"
         circular_dependency: "Esta relación podría crear una dependencia circular"
-        cant_link_an_issue_with_a_descendant: "An issue can not be linked to one of its subtasks"
+        cant_link_an_issue_with_a_descendant: "Esta petición no puede ser ligada a una de estas tareas"
 
         # Append your own errors here or at the model/attributes scope.
 
@@ -245,6 +245,7 @@ es:
   error_can_t_load_default_data: "No se ha podido cargar la configuración por defecto: %{value}"
   error_issue_not_found_in_project: 'La petición no se encuentra o no está asociada a este proyecto'
   error_scm_annotate: "No existe la entrada o no ha podido ser anotada"
+  error_scm_annotate_big_text_file: "La entrada no puede anotarse, al superar el tamaño máximo para ficheros de texto."
   error_scm_command_failed: "Se produjo un error al acceder al repositorio: %{value}"
   error_scm_not_found: "La entrada y/o la revisión no existe en el repositorio."
   field_account: Cuenta
@@ -319,7 +320,7 @@ es:
   field_start_date: Fecha de inicio
   field_start_page: Página principal
   field_status: Estado
-  field_subject: Tema
+  field_subject: Asunto
   field_subproject: Proyecto secundario
   field_summary: Resumen
   field_time_zone: Zona horaria
@@ -776,7 +777,6 @@ es:
   setting_per_page_options: Objetos por página
   setting_plain_text_mail: sólo texto plano (no HTML)
   setting_protocol: Protocolo
-  setting_repositories_encodings: Codificaciones del repositorio
   setting_self_registration: Registro permitido
   setting_sequential_project_identifiers: Generar identificadores de proyecto
   setting_sys_api_enabled: Habilitar SW para la gestión del repositorio
@@ -1006,10 +1006,40 @@ es:
   field_root_directory: Directorio raíz
   field_cvs_module: Módulo
   field_cvsroot: CVSROOT
-  text_git_repository_note: Repositorio local (bare repository) (e.g. /gitrepo, c:\gitrepo)
   text_mercurial_repository_note: Repositorio local (e.g. /hgrepo, c:\hgrepo)
   text_scm_command: Orden
   text_scm_command_version: Versión
   label_git_report_last_commit: Informar del último commit para ficheros y directorios
   text_scm_config: Puede configurar las órdenes de cada scm en configuration/configuration.yml. Por favor, reinicie la aplicación después de editarlo
   text_scm_command_not_available: La orden para el Scm no está disponible. Por favor, compruebe la configuración en el panel de administración.
+  notice_issue_successful_create: Petición %{id} creada.
+  label_between: entre
+  setting_issue_group_assignment: Permitir asignar peticiones a grupos
+  label_diff: diferencias
+  text_git_repository_note: El repositorio es básico y local (p.e. /gitrepo, c:\gitrepo)
+  description_query_sort_criteria_direction: Dirección de ordenación
+  description_project_scope: Ámbito de búsqueda
+  description_filter: Filtro
+  description_user_mail_notification: Configuración de notificaciones por correo
+  description_date_from: Introduzca la fecha de inicio
+  description_message_content: Contenido del mensaje
+  description_available_columns: Columnas disponibles
+  description_date_range_interval: Elija el rango seleccionando la fecha de inicio y fin
+  description_issue_category_reassign: Elija la categoría de la petición
+  description_search: Campo de búsqueda
+  description_notes: Notas
+  description_date_range_list: Elija el rango en la lista
+  description_choose_project: Proyectos
+  description_date_to: Introduzca la fecha fin
+  description_query_sort_criteria_attribute: Atributo de ordenación
+  description_wiki_subpages_reassign: Elija la nueva página padre
+  description_selected_columns: Columnas seleccionadas
+  label_parent_revision: Padre
+  label_child_revision: Hijo
+  setting_default_issue_start_date_to_creation_date: Use current date as start date for new issues
+  button_edit_section: Edit this section
+  setting_repositories_encodings: Attachments and repositories encodings
+  description_all_columns: Todas las columnas
+  button_export: Exportar
+  label_export_options: "%{export_format} opciones de exportación"
+  error_attachment_too_big: Este fichero no se puede adjuntar porque excede el tamaño máximo de fichero (%{max_size})

@@ -138,7 +138,7 @@ class RepositoryTest < ActiveSupport::TestCase
                   changeset.comments )
   end
 
-  def test_for_urls_strip
+  def test_for_urls_strip_cvs
     repository = Repository::Cvs.create(
         :project => Project.find(4),
         :url => ' :pserver:login:password@host:/path/to/the/repository',
@@ -149,6 +149,24 @@ class RepositoryTest < ActiveSupport::TestCase
     assert_equal ':pserver:login:password@host:/path/to/the/repository',
                   repository.url
     assert_equal 'foo', repository.root_url
+  end
+
+  def test_for_urls_strip_subversion
+    repository = Repository::Subversion.create(
+        :project => Project.find(4),
+        :url => ' file:///dummy   ')
+    assert repository.save
+    repository.reload
+    assert_equal 'file:///dummy', repository.url
+  end
+
+  def test_for_urls_strip_git
+    repository = Repository::Git.create(
+        :project => Project.find(4),
+        :url => ' c:\dummy   ')
+    assert repository.save
+    repository.reload
+    assert_equal 'c:\dummy', repository.url
   end
 
   def test_manual_user_mapping

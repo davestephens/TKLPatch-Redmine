@@ -1,7 +1,20 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class ContextMenusControllerTest < ActionController::TestCase
-  fixtures :all
+  fixtures :projects,
+           :trackers,
+           :projects_trackers,
+           :roles,
+           :member_roles,
+           :members,
+           :auth_sources,
+           :enabled_modules,
+           :workflows,
+           :journals, :journal_details,
+           :versions,
+           :issues, :issue_statuses, :issue_categories,
+           :users,
+           :enumerations
 
   def test_context_menu_one_issue
     @request.session[:user_id] = 2
@@ -17,6 +30,7 @@ class ContextMenusControllerTest < ActionController::TestCase
     assert_tag :tag => 'a', :content => 'Immediate',
                             :attributes => { :href => '/issues/bulk_edit?ids%5B%5D=1&amp;issue%5Bpriority_id%5D=8',
                                              :class => '' }
+    assert_no_tag :tag => 'a', :content => 'Inactive Priority'
     # Versions
     assert_tag :tag => 'a', :content => '2.0',
                             :attributes => { :href => '/issues/bulk_edit?ids%5B%5D=1&amp;issue%5Bfixed_version_id%5D=3',
@@ -50,7 +64,7 @@ class ContextMenusControllerTest < ActionController::TestCase
                             :attributes => { :href => '#',
                                              :class => 'icon-del disabled' }
   end
-  
+
   def test_context_menu_multiple_issues_of_same_project
     @request.session[:user_id] = 2
     get :issues, :ids => [1, 2]
@@ -58,7 +72,7 @@ class ContextMenusControllerTest < ActionController::TestCase
     assert_template 'context_menu'
     assert_not_nil assigns(:issues)
     assert_equal [1, 2], assigns(:issues).map(&:id).sort
-                              
+
     ids = assigns(:issues).map(&:id).map {|i| "ids%5B%5D=#{i}"}.join('&amp;')
     assert_tag :tag => 'a', :content => 'Edit',
                             :attributes => { :href => "/issues/bulk_edit?#{ids}",
@@ -90,7 +104,7 @@ class ContextMenusControllerTest < ActionController::TestCase
     assert_template 'context_menu'
     assert_not_nil assigns(:issues)
     assert_equal [1, 2, 6], assigns(:issues).map(&:id).sort
-    
+
     ids = assigns(:issues).map(&:id).map {|i| "ids%5B%5D=#{i}"}.join('&amp;')
     assert_tag :tag => 'a', :content => 'Edit',
                             :attributes => { :href => "/issues/bulk_edit?#{ids}",
@@ -108,11 +122,30 @@ class ContextMenusControllerTest < ActionController::TestCase
                             :attributes => { :href => "/issues/destroy?#{ids}",
                                              :class => 'icon-del' }
   end
-  
+
   def test_context_menu_issue_visibility
     get :issues, :ids => [1, 4]
     assert_response :success
     assert_template 'context_menu'
     assert_equal [1], assigns(:issues).collect(&:id)
+  end
+  
+  def test_time_entries_context_menu
+    @request.session[:user_id] = 2
+    get :time_entries, :ids => [1, 2]
+    assert_response :success
+    assert_template 'time_entries'
+    assert_tag 'a', :content => 'Edit'
+    assert_no_tag 'a', :content => 'Edit', :attributes => {:class => /disabled/}
+  end
+  
+  def test_time_entries_context_menu_without_edit_permission
+    @request.session[:user_id] = 2
+    Role.find_by_name('Manager').remove_permission! :edit_time_entries
+    
+    get :time_entries, :ids => [1, 2]
+    assert_response :success
+    assert_template 'time_entries'
+    assert_tag 'a', :content => 'Edit', :attributes => {:class => /disabled/}
   end
 end

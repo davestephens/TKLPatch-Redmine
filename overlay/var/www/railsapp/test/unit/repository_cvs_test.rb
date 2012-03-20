@@ -20,8 +20,7 @@ require 'pp'
 class RepositoryCvsTest < ActiveSupport::TestCase
   fixtures :projects
 
-  # No '..' in the repository path
-  REPOSITORY_PATH = RAILS_ROOT.gsub(%r{config\/\.\.}, '') + '/tmp/test/cvs_repository'
+  REPOSITORY_PATH = Rails.root.join('tmp/test/cvs_repository').to_s
   REPOSITORY_PATH.gsub!(/\//, "\\") if Redmine::Platform.mswin?
   # CVS module
   MODULE_NAME    = 'test'
@@ -40,7 +39,7 @@ class RepositoryCvsTest < ActiveSupport::TestCase
     def test_fetch_changesets_from_scratch
       assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
 
       assert_equal CHANGESETS_NUM, @repository.changesets.count
       assert_equal 16, @repository.changes.count
@@ -83,7 +82,7 @@ class RepositoryCvsTest < ActiveSupport::TestCase
     def test_deleted_files_should_not_be_listed
       assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
       assert_equal CHANGESETS_NUM, @repository.changesets.count
 
       entries = @repository.entries('sources')
@@ -92,8 +91,10 @@ class RepositoryCvsTest < ActiveSupport::TestCase
     end
 
     def test_entries_rev3
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal CHANGESETS_NUM, @repository.changesets.count
       entries = @repository.entries('', '3')
       assert_equal 3, entries.size
       assert_equal entries[2].name, "README"
@@ -104,21 +105,27 @@ class RepositoryCvsTest < ActiveSupport::TestCase
     end
 
     def test_entries_invalid_path
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal CHANGESETS_NUM, @repository.changesets.count
       assert_nil @repository.entries('missing')
       assert_nil @repository.entries('missing', '3')
     end
 
     def test_entries_invalid_revision
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal CHANGESETS_NUM, @repository.changesets.count
       assert_nil @repository.entries('', '123')
     end
 
     def test_cat
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal CHANGESETS_NUM, @repository.changesets.count
       buf = @repository.cat('README')
       assert buf
       lines = buf.split("\n")
@@ -142,8 +149,10 @@ class RepositoryCvsTest < ActiveSupport::TestCase
     end
 
     def test_annotate
+      assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
-      @repository.reload
+      @project.reload
+      assert_equal CHANGESETS_NUM, @repository.changesets.count
       ann = @repository.annotate('README')
       assert ann
       assert_equal 3, ann.revisions.length

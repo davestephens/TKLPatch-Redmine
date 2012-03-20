@@ -51,9 +51,10 @@ class IssueNestedSetTest < ActiveSupport::TestCase
 
   def test_creating_a_child_in_different_project_should_not_validate
     issue = create_issue!
-    child = Issue.new(:project_id => 2, :tracker_id => 1, :author_id => 1, :subject => 'child', :parent_issue_id => issue.id)
+    child = Issue.new(:project_id => 2, :tracker_id => 1, :author_id => 1,
+                      :subject => 'child', :parent_issue_id => issue.id)
     assert !child.save
-    assert_not_nil child.errors.on(:parent_issue_id)
+    assert_not_nil child.errors[:parent_issue_id]
   end
 
   def test_move_a_root_to_child
@@ -178,7 +179,7 @@ class IssueNestedSetTest < ActiveSupport::TestCase
     child.reload
     child.parent_issue_id = grandchild.id
     assert !child.save
-    assert_not_nil child.errors.on(:parent_issue_id)
+    assert_not_nil child.errors[:parent_issue_id]
   end
 
   def test_moving_an_issue_should_keep_valid_relations_only
@@ -222,6 +223,20 @@ class IssueNestedSetTest < ActiveSupport::TestCase
     assert_equal [issue1.id, 1, 4], [issue1.root_id, issue1.lft, issue1.rgt]
     assert_equal [issue1.id, 2, 3], [issue4.root_id, issue4.lft, issue4.rgt]
   end
+  
+  def test_destroy_child_should_update_parent
+    issue = create_issue!
+    child1 = create_issue!(:parent_issue_id => issue.id)
+    child2 = create_issue!(:parent_issue_id => issue.id)
+    
+    issue.reload
+    assert_equal [issue.id, 1, 6], [issue.root_id, issue.lft, issue.rgt]
+    
+    child2.reload.destroy
+    
+    issue.reload
+    assert_equal [issue.id, 1, 4], [issue.root_id, issue.lft, issue.rgt]
+  end
 
   def test_destroy_parent_issue_updated_during_children_destroy
     parent = create_issue!
@@ -251,6 +266,20 @@ class IssueNestedSetTest < ActiveSupport::TestCase
 
     root = Issue.find(root.id)
     assert root.leaf?, "Root issue is not a leaf (lft: #{root.lft}, rgt: #{root.rgt})"
+  end
+
+  def test_destroy_issue_with_grand_child
+    parent = create_issue!
+    issue = create_issue!(:parent_issue_id => parent.id)
+    child = create_issue!(:parent_issue_id => issue.id)
+    grandchild1 = create_issue!(:parent_issue_id => child.id)
+    grandchild2 = create_issue!(:parent_issue_id => child.id)
+
+    assert_difference 'Issue.count', -4 do
+      Issue.find(issue.id).destroy
+      parent.reload
+      assert_equal [1, 2], [parent.lft, parent.rgt]
+    end
   end
 
   def test_parent_priority_should_be_the_highest_child_priority

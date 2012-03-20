@@ -55,7 +55,7 @@ class ProjectsControllerTest < ActionController::TestCase
   def test_index_atom
     get :index, :format => 'atom'
     assert_response :success
-    assert_template 'common/feed.atom.rxml'
+    assert_template 'common/feed.atom'
     assert_select 'feed>title', :text => 'Redmine: Latest projects'
     assert_select 'feed>entry', :count => Project.count(:conditions => Project.visible_condition(User.current))
   end
@@ -186,6 +186,13 @@ class ProjectsControllerTest < ActionController::TestCase
         assert_kind_of Project, project
         assert_equal Project.find(1), project.parent
       end
+
+      should "continue" do
+        assert_difference 'Project.count' do
+          post :create, :project => {:name => "blog", :identifier => "blog"}, :continue => 'Create and continue'
+        end
+        assert_redirected_to '/projects/new?'
+      end
     end
 
     context "by non-admin user with add_project permission" do
@@ -231,7 +238,7 @@ class ProjectsControllerTest < ActionController::TestCase
         assert_response :success
         project = assigns(:project)
         assert_kind_of Project, project
-        assert_not_nil project.errors.on(:parent_id)
+        assert_not_nil project.errors[:parent_id]
       end
     end
 
@@ -266,7 +273,7 @@ class ProjectsControllerTest < ActionController::TestCase
         assert_response :success
         project = assigns(:project)
         assert_kind_of Project, project
-        assert_not_nil project.errors.on(:parent_id)
+        assert_not_nil project.errors[:parent_id]
       end
 
       should "fail with unauthorized parent_id" do
@@ -283,7 +290,7 @@ class ProjectsControllerTest < ActionController::TestCase
         assert_response :success
         project = assigns(:project)
         assert_kind_of Project, project
-        assert_not_nil project.errors.on(:parent_id)
+        assert_not_nil project.errors[:parent_id]
       end
     end
   end

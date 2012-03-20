@@ -18,27 +18,27 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 require 'iconv'
-require 'rfpdf/fpdf'
 require 'fpdf/chinese'
 require 'fpdf/japanese'
 require 'fpdf/korean'
+require 'core/rmagick'
 
 module Redmine
   module Export
     module PDF
       include ActionView::Helpers::TextHelper
       include ActionView::Helpers::NumberHelper
+      include IssuesHelper
 
       class ITCPDF < TCPDF
         include Redmine::I18n
         attr_accessor :footer_date
 
         def initialize(lang)
+          @@k_path_cache = Rails.root.join('tmp', 'pdf')
+          FileUtils.mkdir_p @@k_path_cache unless File::exist?(@@k_path_cache)
           set_language_if_valid lang
           pdf_encoding = l(:general_pdf_encoding).upcase
-          if RUBY_VERSION < '1.9'
-            @ic = Iconv.new(pdf_encoding, 'UTF-8')
-          end
           super('P', 'mm', 'A4', (pdf_encoding == 'UTF-8'), pdf_encoding)
           case current_language.to_s.downcase
           when 'vi'
@@ -104,7 +104,7 @@ module Redmine
         end
 
         def fix_text_encoding(txt)
-          RDMPdfEncoding::rdm_pdf_iconv(@ic, txt)
+          RDMPdfEncoding::rdm_from_utf8(txt, l(:general_pdf_encoding))
         end
 
         def RDMCell(w ,h=0, txt='', border=0, ln=0, align='', fill=0, link='')
@@ -113,6 +113,24 @@ module Redmine
 
         def RDMMultiCell(w, h=0, txt='', border=0, align='', fill=0, ln=1)
           MultiCell(w, h, fix_text_encoding(txt), border, align, fill, ln)
+        end
+
+        def RDMwriteHTMLCell(w, h, x, y, txt='', attachments=[], border=0, ln=1, fill=0)
+          @attachments = attachments
+          writeHTMLCell(w, h, x, y,
+            fix_text_encoding(
+              Redmine::WikiFormatting.to_html(Setting.text_formatting, txt)),
+            border, ln, fill)
+        end
+
+        def getImageFilename(attrname)
+          # attrname: general_pdf_encoding string file/uri name
+          atta = RDMPdfEncoding.attach(@attachments, attrname, l(:general_pdf_encoding))
+          if atta
+            return atta.diskfile
+          else
+            return nil
+          end
         end
 
         def Footer
@@ -150,7 +168,8 @@ module Redmine
         col_width = []
         unless query.columns.empty?
           col_width = query.columns.collect do |c|
-            (c.name == :subject || (c.is_a?(QueryCustomFieldColumn) && ['string', 'text'].include?(c.custom_field.field_format)))? 4.0 : 1.0
+            (c.name == :subject || (c.is_a?(QueryCustomFieldColumn) &&
+              ['string', 'text'].include?(c.custom_field.field_format))) ? 4.0 : 1.0
           end
           ratio = (table_width - col_id_width) / col_width.inject(0) {|s,w| s += w}
           col_width = col_width.collect {|w| w * ratio}
@@ -182,7 +201,7 @@ module Redmine
         pdf.SetFontStyle('',8)
         pdf.SetFillColor(255, 255, 255)
         previous_group = false
-        issues.each do |issue|
+        issue_list(issues) do |issue, level|
           if query.grouped? &&
                (group = query.group_by_column.value(issue)) != previous_group
             pdf.SetFontStyle('B',9)
@@ -199,6 +218,9 @@ module Redmine
               show_value(cv)
             else
               value = issue.send(column.name)
+              if column.name == :subject
+                value = "  " * level + value
+              end
               if value.is_a?(Date)
                 format_date(value)
               elsif value.is_a?(Time)
@@ -278,8 +300,18 @@ module Redmine
         pdf.footer_date = format_date(Date.today)
         pdf.AddPage
         pdf.SetFontStyle('B',11)
-        pdf.RDMMultiCell(190,5,
-             "#{issue.project} - #{issue.tracker} # #{issue.id}: #{issue.subject}")
+        buf = "#{issue.project} - #{issue.tracker} # #{issue.id}"
+        pdf.RDMMultiCell(190, 5, buf)
+        pdf.Ln
+        pdf.SetFontStyle('',8)
+        base_x = pdf.GetX
+        i = 1
+        issue.ancestors.each do |ancestor|
+          pdf.SetX(base_x + i)
+          buf = "#{ancestor.tracker} # #{ancestor.id} (#{ancestor.status.to_s}): #{ancestor.subject}"
+          pdf.RDMMultiCell(190 - i, 5, buf)
+          i += 1 if i < 35
+        end
         pdf.Ln
 
         pdf.SetFontStyle('B',9)
@@ -340,7 +372,61 @@ module Redmine
         pdf.SetFontStyle('B',9)
         pdf.RDMCell(35+155, 5, l(:field_description), "LRT", 1)
         pdf.SetFontStyle('',9)
-        pdf.RDMMultiCell(35+155, 5, issue.description.to_s, "LRB")
+
+        # Set resize image scale
+        pdf.SetImageScale(1.6)
+        pdf.RDMwriteHTMLCell(35+155, 5, 0, 0,
+              issue.description.to_s, issue.attachments, "LRB")
+
+        unless issue.leaf?
+          # for CJK
+          truncate_length = ( l(:general_pdf_encoding).upcase == "UTF-8" ? 90 : 65 )
+  
+          pdf.SetFontStyle('B',9)
+          pdf.RDMCell(35+155,5, l(:label_subtask_plural) + ":", "LTR")
+          pdf.Ln
+          issue_list(issue.descendants.sort_by(&:lft)) do |child, level|
+            buf = truncate("#{child.tracker} # #{child.id}: #{child.subject}",
+                           :length => truncate_length)
+            level = 10 if level >= 10
+            pdf.SetFontStyle('',8)
+            pdf.RDMCell(35+135,5, (level >=1 ? "  " * level : "") + buf, "L")
+            pdf.SetFontStyle('B',8)
+            pdf.RDMCell(20,5, child.status.to_s, "R")
+            pdf.Ln
+          end
+        end
+
+        relations = issue.relations.select { |r| r.other_issue(issue).visible? }
+        unless relations.empty?
+          # for CJK
+          truncate_length = ( l(:general_pdf_encoding).upcase == "UTF-8" ? 80 : 60 )
+  
+          pdf.SetFontStyle('B',9)
+          pdf.RDMCell(35+155,5, l(:label_related_issues) + ":", "LTR")
+          pdf.Ln
+          relations.each do |relation|
+            buf = ""
+            buf += "#{l(relation.label_for(issue))} "
+            if relation.delay && relation.delay != 0
+              buf += "(#{l('datetime.distance_in_words.x_days', :count => relation.delay)}) "
+            end
+            if Setting.cross_project_issue_relations?
+              buf += "#{relation.other_issue(issue).project} - "
+            end
+            buf += "#{relation.other_issue(issue).tracker}" +
+                   " # #{relation.other_issue(issue).id}: #{relation.other_issue(issue).subject}"
+            buf = truncate(buf, :length => truncate_length)
+            pdf.SetFontStyle('', 8)
+            pdf.RDMCell(35+155-60, 5, buf, "L")
+            pdf.SetFontStyle('B',8)
+            pdf.RDMCell(20,5, relation.other_issue(issue).status.to_s, "")
+            pdf.RDMCell(20,5, format_date(relation.other_issue(issue).start_date), "")
+            pdf.RDMCell(20,5, format_date(relation.other_issue(issue).due_date), "R")
+            pdf.Ln
+          end
+        end
+        pdf.RDMCell(190,5, "", "T")
         pdf.Ln
 
         if issue.changesets.any? &&
@@ -356,7 +442,8 @@ module Redmine
             pdf.Ln
             unless changeset.comments.blank?
               pdf.SetFontStyle('',8)
-              pdf.RDMMultiCell(190,5, changeset.comments.to_s)
+              pdf.RDMwriteHTMLCell(190,5,0,0,
+                    changeset.comments.to_s, issue.attachments, "")
             end
             pdf.Ln
           end
@@ -365,12 +452,16 @@ module Redmine
         pdf.SetFontStyle('B',9)
         pdf.RDMCell(190,5, l(:label_history), "B")
         pdf.Ln
+        indice = 0
         for journal in issue.journals.find(
                           :all, :include => [:user, :details],
                           :order => "#{Journal.table_name}.created_on ASC")
+          indice = indice + 1
           pdf.SetFontStyle('B',8)
           pdf.RDMCell(190,5,
-             format_time(journal.created_on) + " - " + journal.user.name)
+             "#" + indice.to_s +
+             " - " + format_time(journal.created_on) +
+             " - " + journal.user.name)
           pdf.Ln
           pdf.SetFontStyle('I',8)
           for detail in journal.details
@@ -379,7 +470,8 @@ module Redmine
           if journal.notes?
             pdf.Ln unless journal.details.empty?
             pdf.SetFontStyle('',8)
-            pdf.RDMMultiCell(190,5, journal.notes.to_s)
+            pdf.RDMwriteHTMLCell(190,5,0,0,
+                  journal.notes.to_s, issue.attachments, "")
           end
           pdf.Ln
         end
@@ -400,41 +492,60 @@ module Redmine
         pdf.Output
       end
 
+      # Returns a PDF string of a single wiki page
+      def wiki_to_pdf(page, project)
+        pdf = ITCPDF.new(current_language)
+        pdf.SetTitle("#{project} - #{page.title}")
+        pdf.alias_nb_pages
+        pdf.footer_date = format_date(Date.today)
+        pdf.AddPage
+        pdf.SetFontStyle('B',11)
+        pdf.RDMMultiCell(190,5,
+             "#{project} - #{page.title} - # #{page.content.version}")
+        pdf.Ln
+        # Set resize image scale
+        pdf.SetImageScale(1.6)
+        pdf.SetFontStyle('',9)
+        pdf.RDMwriteHTMLCell(190,5,0,0,
+              page.content.text.to_s, page.attachments, "TLRB")
+        if page.attachments.any?
+          pdf.Ln
+          pdf.SetFontStyle('B',9)
+          pdf.RDMCell(190,5, l(:label_attachment_plural), "B")
+          pdf.Ln
+          for attachment in page.attachments
+            pdf.SetFontStyle('',8)
+            pdf.RDMCell(80,5, attachment.filename)
+            pdf.RDMCell(20,5, number_to_human_size(attachment.filesize),0,0,"R")
+            pdf.RDMCell(25,5, format_date(attachment.created_on),0,0,"R")
+            pdf.RDMCell(65,5, attachment.author.name,0,0,"R")
+            pdf.Ln
+          end
+        end
+        pdf.Output
+      end
+
       class RDMPdfEncoding
-        include Redmine::I18n
-        def self.rdm_pdf_iconv(ic, txt)
+        def self.rdm_from_utf8(txt, encoding)
           txt ||= ''
+          txt = Redmine::CodesetUtil.from_utf8(txt, encoding)
           if txt.respond_to?(:force_encoding)
-            txt.force_encoding('UTF-8')
-            if l(:general_pdf_encoding).upcase != 'UTF-8'
-              txt = txt.encode(l(:general_pdf_encoding), :invalid => :replace,
-                               :undef => :replace, :replace => '?')
-            else
-              txt = Redmine::CodesetUtil.replace_invalid_utf8(txt)
-            end
             txt.force_encoding('ASCII-8BIT')
-          elsif RUBY_PLATFORM == 'java'
-            begin
-              ic ||= Iconv.new(l(:general_pdf_encoding), 'UTF-8')
-              txt = ic.iconv(txt)
-            rescue
-              txt = txt.gsub(%r{[^\r\n\t\x20-\x7e]}, '?')
-            end
-          else
-            ic ||= Iconv.new(l(:general_pdf_encoding), 'UTF-8')
-            txtar = ""
-            begin
-              txtar += ic.iconv(txt)
-            rescue Iconv::IllegalSequence
-              txtar += $!.success
-              txt = '?' + $!.failed[1,$!.failed.length]
-              retry
-            rescue
-              txtar += $!.success
-            end
-            txt = txtar
           end
           txt
+        end
+
+        def self.attach(attachments, filename, encoding)
+          filename_utf8 = Redmine::CodesetUtil.to_utf8(filename, encoding)
+          atta = nil
+          if filename_utf8 =~ /^[^\/"]+\.(gif|jpg|jpe|jpeg|png)$/i
+            atta = Attachment.latest_attach(attachments, filename_utf8)
+          end
+          if atta && atta.readable? && atta.visible?
+            return atta
+          else
+            return nil
+          end
         end
       end
     end

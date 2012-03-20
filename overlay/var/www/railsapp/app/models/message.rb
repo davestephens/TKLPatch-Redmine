@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class Message < ActiveRecord::Base
+  include Redmine::SafeAttributes
   belongs_to :board
   belongs_to :author, :class_name => 'User', :foreign_key => 'author_id'
   acts_as_tree :counter_cache => :replies_count, :order => "#{Message.table_name}.created_on ASC"
@@ -29,7 +30,7 @@ class Message < ActiveRecord::Base
   acts_as_event :title => Proc.new {|o| "#{o.board.name}: #{o.subject}"},
                 :description => :content,
                 :type => Proc.new {|o| o.parent_id.nil? ? 'message' : 'reply'},
-                :url => Proc.new {|o| {:controller => 'messages', :action => 'show', :board_id => o.board_id}.merge(o.parent_id.nil? ? {:id => o.id} : 
+                :url => Proc.new {|o| {:controller => 'messages', :action => 'show', :board_id => o.board_id}.merge(o.parent_id.nil? ? {:id => o.id} :
                                                                                                                                        {:id => o.parent_id, :r => o.id, :anchor => "message-#{o.id}"})}
 
   acts_as_activity_provider :find_options => {:include => [{:board => :project}, :author]},
@@ -39,29 +40,38 @@ class Message < ActiveRecord::Base
   attr_protected :locked, :sticky
   validates_presence_of :board, :subject, :content
   validates_length_of :subject, :maximum => 255
+  validate :cannot_reply_to_locked_topic, :on => :create
 
-  after_create :add_author_as_watcher
+  after_create :add_author_as_watcher, :update_parent_last_reply
+  after_update :update_messages_board
+  after_destroy :reset_board_counters
 
   named_scope :visible, lambda {|*args| { :include => {:board => :project},
                                           :conditions => Project.allowed_to_condition(args.shift || User.current, :view_messages, *args) } }
+
+  safe_attributes 'subject', 'content'
+  safe_attributes 'locked', 'sticky',
+    :if => lambda {|message, user|
+      user.allowed_to?(:edit_messages, message.project)
+    }
 
   def visible?(user=User.current)
     !user.nil? && user.allowed_to?(:view_messages, project)
   end
 
-  def validate_on_create
+  def cannot_reply_to_locked_topic
     # Can not reply to a locked topic
-    errors.add_to_base 'Topic is locked' if root.locked? && self != root
+    errors.add :base, 'Topic is locked' if root.locked? && self != root
   end
 
-  def after_create
+  def update_parent_last_reply
     if parent
       parent.reload.update_attribute(:last_reply_id, self.id)
     end
     board.reset_counters!
   end
 
-  def after_update
+  def update_messages_board
     if board_id_changed?
       Message.update_all("board_id = #{board_id}", ["id = ? OR parent_id = ?", root.id, root.id])
       Board.reset_counters!(board_id_was)
@@ -69,7 +79,7 @@ class Message < ActiveRecord::Base
     end
   end
 
-  def after_destroy
+  def reset_board_counters
     board.reset_counters!
   end
 

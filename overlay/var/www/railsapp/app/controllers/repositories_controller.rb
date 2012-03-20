@@ -121,7 +121,7 @@ class RepositoriesController < ApplicationController
     @changesets = @repository.changesets.find(:all,
                        :limit  =>  @changeset_pages.items_per_page,
                        :offset =>  @changeset_pages.current.offset,
-                       :include => [:user, :repository])
+                       :include => [:user, :repository, :parents])
 
     respond_to do |format|
       format.html { render :layout => false if request.xhr? }
@@ -172,7 +172,16 @@ class RepositoriesController < ApplicationController
     (show_error_not_found; return) unless @entry
 
     @annotate = @repository.scm.annotate(@path, @rev)
-    (render_error l(:error_scm_annotate); return) if @annotate.nil? || @annotate.empty?
+    if @annotate.nil? || @annotate.empty?
+      (render_error l(:error_scm_annotate); return)
+    end
+    ann_buf_size = 0
+    @annotate.lines.each do |buf|
+      ann_buf_size += buf.size
+    end
+    if ann_buf_size > Setting.file_max_size_displayed.to_i.kilobyte
+      (render_error l(:error_scm_annotate_big_text_file); return)
+    end
     @changeset = @repository.find_changeset_by_name(@rev)
   end
 
@@ -207,7 +216,7 @@ class RepositoriesController < ApplicationController
         User.current.pref[:diff_type] = @diff_type
         User.current.preference.save
       end
-      @cache_key = "repositories/diff/#{@repository.id}/" + 
+      @cache_key = "repositories/diff/#{@repository.id}/" +
                       Digest::MD5.hexdigest("#{@path}-#{@rev}-#{@rev_to}-#{@diff_type}-#{current_language}")
       unless read_fragment(@cache_key)
         @diff = @repository.diff(@path, @rev, @rev_to)
@@ -249,7 +258,7 @@ class RepositoriesController < ApplicationController
     (render_404; return false) unless @repository
     @path = params[:path].join('/') unless params[:path].nil?
     @path ||= ''
-    @rev = params[:rev].blank? ? @repository.default_branch : params[:rev].strip
+    @rev = params[:rev].blank? ? @repository.default_branch : params[:rev].to_s.strip
     @rev_to = params[:rev_to]
 
     unless @rev.to_s.match(REV_PARAM_RE) && @rev_to.to_s.match(REV_PARAM_RE)

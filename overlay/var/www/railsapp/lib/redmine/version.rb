@@ -3,8 +3,8 @@ require 'rexml/document'
 module Redmine
   module VERSION #:nodoc:
     MAJOR = 1
-    MINOR = 2
-    TINY  = 1
+    MINOR = 3
+    TINY  = 2
 
     # Branch values:
     # * official release: nil
@@ -14,7 +14,7 @@ module Redmine
 
     def self.revision
       revision = nil
-      entries_path = "#{RAILS_ROOT}/.svn/entries"
+      entries_path = "#{Rails.root}/.svn/entries"
       if File.readable?(entries_path)
         begin
           f = File.open(entries_path, 'r')
@@ -37,8 +37,8 @@ module Redmine
     REVISION = self.revision
     ARRAY    = [MAJOR, MINOR, TINY, BRANCH, REVISION].compact
     STRING   = ARRAY.join('.')
-    
+
     def self.to_a; ARRAY  end
-    def self.to_s; STRING end    
+    def self.to_s; STRING end
   end
 end

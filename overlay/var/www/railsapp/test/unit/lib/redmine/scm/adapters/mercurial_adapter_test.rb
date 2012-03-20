@@ -3,14 +3,11 @@ begin
   require 'mocha'
 
   class MercurialAdapterTest < ActiveSupport::TestCase
-
     HELPERS_DIR        = Redmine::Scm::Adapters::MercurialAdapter::HELPERS_DIR
     TEMPLATE_NAME      = Redmine::Scm::Adapters::MercurialAdapter::TEMPLATE_NAME
     TEMPLATE_EXTENSION = Redmine::Scm::Adapters::MercurialAdapter::TEMPLATE_EXTENSION
 
-    REPOSITORY_PATH = RAILS_ROOT.gsub(%r{config\/\.\.}, '') +
-                         '/tmp/test/mercurial_repository'
-
+    REPOSITORY_PATH = Rails.root.join('tmp/test/mercurial_repository').to_s
     CHAR_1_HEX = "\xc3\x9c"
 
     if File.directory?(REPOSITORY_PATH)
@@ -56,12 +53,14 @@ begin
       end
 
       def test_template_path
-        to_test = { [0,9,5]  => "0.9.5",
-                    [1,0]    => "1.0",
+        to_test = {
+                    [1,2]    => "1.0",
                     []       => "1.0",
-                    [1,0,1]  => "1.0",
+                    [1,2,1]  => "1.0",
                     [1,7]    => "1.0",
-                    [1,7,1]  => "1.0" }
+                    [1,7,1]  => "1.0",
+                    [2,0]    => "1.0",
+                   }
         to_test.each do |v, template|
           test_template_path_for(v, template)
         end
@@ -73,8 +72,8 @@ begin
           adp = Redmine::Scm::Adapters::MercurialAdapter.new(repo)
           repo_path =  adp.info.root_url.gsub(/\\/, "/")
           assert_equal REPOSITORY_PATH, repo_path
-          assert_equal '28', adp.info.lastrev.revision
-          assert_equal '3ae45e2d177d',adp.info.lastrev.scmid
+          assert_equal '31', adp.info.lastrev.revision
+          assert_equal '31eeee7395c8',adp.info.lastrev.scmid
         end
       end
 
@@ -90,6 +89,21 @@ begin
         assert_equal 2, revisions.size
         assert_equal '2', revisions[0].revision
         assert_equal '400bb8672109', revisions[0].scmid
+      end
+
+      def test_parents
+        revs1 = @adapter.revisions(nil, 0, 0)
+        assert_equal 1, revs1.size
+        assert_equal [], revs1[0].parents
+        revs2 = @adapter.revisions(nil, 1, 1)
+        assert_equal 1, revs2.size
+        assert_equal 1, revs2[0].parents.size
+        assert_equal "0885933ad4f6", revs2[0].parents[0]
+        revs3 = @adapter.revisions(nil, 30, 30)
+        assert_equal 1, revs3.size
+        assert_equal 2, revs3[0].parents.size
+        assert_equal "a94b0528f24f", revs3[0].parents[0]
+        assert_equal "3a330eb32958", revs3[0].parents[1]
       end
 
       def test_diff
@@ -256,22 +270,41 @@ begin
       end
 
       def test_branches
-        assert_equal [
-            'default',
-            @branch_char_1,
-            'branch (1)[2]&,%.-3_4',
-            @branch_char_0,
-            'test_branch.latin-1',
-            'test-branch-00',
-          ], @adapter.branches
+        brs = []
+        @adapter.branches.each do |b|
+          brs << b
+        end
+        assert_equal 7, brs.length
+        assert_equal 'default', brs[0].to_s
+        assert_equal '31', brs[0].revision
+        assert_equal '31eeee7395c8', brs[0].scmid
+        assert_equal 'test-branch-01', brs[1].to_s
+        assert_equal '30', brs[1].revision
+        assert_equal 'ad4dc4f80284', brs[1].scmid
+        assert_equal @branch_char_1, brs[2].to_s
+        assert_equal '27', brs[2].revision
+        assert_equal '7bbf4c738e71', brs[2].scmid
+        assert_equal 'branch (1)[2]&,%.-3_4', brs[3].to_s
+        assert_equal '25', brs[3].revision
+        assert_equal 'afc61e85bde7', brs[3].scmid
+        assert_equal @branch_char_0, brs[4].to_s
+        assert_equal '23', brs[4].revision
+        assert_equal 'c8d3e4887474', brs[4].scmid
+        assert_equal 'test_branch.latin-1', brs[5].to_s
+        assert_equal '22', brs[5].revision
+        assert_equal 'c2ffe7da686a', brs[5].scmid
+        assert_equal 'test-branch-00', brs[6].to_s
+        assert_equal '13', brs[6].revision
+        assert_equal '3a330eb32958', brs[6].scmid
       end
 
       def test_branchmap
         bm = {
-           'default'               => '3ae45e2d177d',
+           'default'               => '31eeee7395c8',
            'test_branch.latin-1'   => 'c2ffe7da686a',
            'branch (1)[2]&,%.-3_4' => 'afc61e85bde7',
            'test-branch-00'        => '3a330eb32958',
+           "test-branch-01"        => 'ad4dc4f80284',
            @branch_char_0          => 'c8d3e4887474',
            @branch_char_1          => '7bbf4c738e71',
          }
@@ -317,17 +350,21 @@ begin
           assert_equal 1, nib1.size
           case bra
             when 'branch (1)[2]&,%.-3_4'
-              assert_equal 3, nib0.size
-              assert_equal nib0[0], 'afc61e85bde7'
-              nib2 = @adapter.nodes_in_branch(bra, :limit => 2)
-              assert_equal 2, nib2.size
-              assert_equal nib2[1], '933ca60293d7'
+              if @adapter.class.client_version_above?([1, 6])
+                assert_equal 3, nib0.size
+                assert_equal nib0[0], 'afc61e85bde7'
+                nib2 = @adapter.nodes_in_branch(bra, :limit => 2)
+                assert_equal 2, nib2.size
+                assert_equal nib2[1], '933ca60293d7'
+              end
             when @branch_char_1
-              assert_equal 2, nib0.size
-              assert_equal nib0[1], '08ff3227303e'
-              nib2 = @adapter.nodes_in_branch(bra, :limit => 1)
-              assert_equal 1, nib2.size
-              assert_equal nib2[0], '7bbf4c738e71'
+              if @adapter.class.client_version_above?([1, 6])
+                assert_equal 2, nib0.size
+                assert_equal nib0[1], '08ff3227303e'
+                nib2 = @adapter.nodes_in_branch(bra, :limit => 1)
+                assert_equal 1, nib2.size
+                assert_equal nib2[0], '7bbf4c738e71'
+              end
           end
         end
       end

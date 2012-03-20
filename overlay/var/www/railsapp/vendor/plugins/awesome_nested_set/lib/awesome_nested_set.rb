@@ -162,9 +162,10 @@ module CollectiveIdea #:nodoc:
         end
                 
         # Rebuilds the left & rights if unset or invalid.  Also very useful for converting from acts_as_tree.
-        def rebuild!
+        def rebuild!(force=false)
           # Don't rebuild a valid tree.
-          return true if valid?
+          # valid? doesn't strictly validate the tree
+          return true if !force && valid?
           
           scope = lambda{|node|}
           if acts_as_nested_set_options[:scope]
@@ -444,18 +445,18 @@ module CollectiveIdea #:nodoc:
         # Prunes a branch off of the tree, shifting all of the elements on the right
         # back to the left so the counts still work.
         def prune_from_tree
-          return if right.nil? || left.nil? || leaf? || !self.class.exists?(id)
+          return if right.nil? || left.nil? || !self.class.exists?(id)
 
-          delete_method = acts_as_nested_set_options[:dependent] == :destroy ?
-            :destroy_all : :delete_all
-
-          # TODO: should destroy children (not descendants) when deleted_method is :destroy_all
           self.class.base_class.transaction do
             reload_nested_set
-            nested_set_scope.send(delete_method,
-              ["#{quoted_left_column_name} > ? AND #{quoted_right_column_name} < ?",
-                left, right]
-            )
+            if acts_as_nested_set_options[:dependent] == :destroy
+              children.each(&:destroy)
+            else
+              nested_set_scope.send(:delete_all,
+                ["#{quoted_left_column_name} > ? AND #{quoted_right_column_name} < ?",
+                  left, right]
+              )
+            end
             reload_nested_set
             diff = right - left + 1
             nested_set_scope.update_all(

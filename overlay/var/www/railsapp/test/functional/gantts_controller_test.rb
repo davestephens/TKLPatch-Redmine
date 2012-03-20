@@ -1,16 +1,24 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class GanttsControllerTest < ActionController::TestCase
-  fixtures :all
+  fixtures :projects, :trackers, :issue_statuses, :issues,
+           :enumerations, :users, :issue_categories,
+           :projects_trackers,
+           :roles,
+           :member_roles,
+           :members,
+           :enabled_modules,
+           :workflows,
+           :versions
 
   context "#gantt" do
     should "work" do
       i2 = Issue.find(2)
       i2.update_attribute(:due_date, 1.month.from_now)
-      
+
       get :show, :project_id => 1
       assert_response :success
-      assert_template 'show.html.erb'
+      assert_template 'gantts/show'
       assert_not_nil assigns(:gantt)
       # Issue with start and due dates
       i = Issue.find(1)
@@ -20,30 +28,30 @@ class GanttsControllerTest < ActionController::TestCase
       i = Issue.find(2)
       assert_select "div a.issue", /##{i.id}/
     end
-    
+
     should "work without issue due dates" do
       Issue.update_all("due_date = NULL")
-      
+
       get :show, :project_id => 1
       assert_response :success
-      assert_template 'show.html.erb'
+      assert_template 'gantts/show'
       assert_not_nil assigns(:gantt)
     end
-    
+
     should "work without issue and version due dates" do
       Issue.update_all("due_date = NULL")
       Version.update_all("effective_date = NULL")
-      
+
       get :show, :project_id => 1
       assert_response :success
-      assert_template 'show.html.erb'
+      assert_template 'gantts/show'
       assert_not_nil assigns(:gantt)
     end
 
     should "work cross project" do
       get :show
       assert_response :success
-      assert_template 'show.html.erb'
+      assert_template 'gantts/show'
       assert_not_nil assigns(:gantt)
       assert_not_nil assigns(:gantt).query
       assert_nil assigns(:gantt).project
@@ -52,8 +60,8 @@ class GanttsControllerTest < ActionController::TestCase
     should "not disclose private projects" do
       get :show
       assert_response :success
-      assert_template 'show.html.erb'
-      
+      assert_template 'gantts/show'
+
       assert_tag 'a', :content => /eCookbook/
       # Root private project
       assert_no_tag 'a', {:content => /OnlineStore/}
@@ -76,7 +84,7 @@ class GanttsControllerTest < ActionController::TestCase
       assert @response.body.starts_with?('%PDF')
       assert_not_nil assigns(:gantt)
     end
-    
+
     should "export to png" do
       get :show, :project_id => 1, :format => 'png'
       assert_response :success

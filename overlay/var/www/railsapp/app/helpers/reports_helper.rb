@@ -1,3 +1,5 @@
+# encoding: utf-8
+#
 # Redmine - project management software
 # Copyright (C) 2006-2011  Jean-Philippe Lang
 #
@@ -31,6 +33,6 @@ module ReportsHelper
 
   def aggregate_link(data, criteria, *args)
     a = aggregate data, criteria
-    a > 0 ? link_to(a, *args) : '-'
+    a > 0 ? link_to(h(a), *args) : '-'
   end
 end

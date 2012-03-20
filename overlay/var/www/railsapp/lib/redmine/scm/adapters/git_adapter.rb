@@ -25,16 +25,13 @@ module Redmine
         # Git executable name
         GIT_BIN = Redmine::Configuration['scm_git_command'] || "git"
 
-        # raised if scm command exited with error, e.g. unknown revision.
-        class ScmCommandAborted < CommandFailed; end
-
         class << self
           def client_command
             @@bin    ||= GIT_BIN
           end
 
           def sq_bin
-            @@sq_bin ||= shell_quote(GIT_BIN)
+            @@sq_bin ||= shell_quote_command
           end
 
           def client_version
@@ -80,10 +77,14 @@ module Redmine
         def branches
           return @branches if @branches
           @branches = []
-          cmd_args = %w|branch --no-color|
+          cmd_args = %w|branch --no-color --verbose --no-abbrev|
           scm_cmd(*cmd_args) do |io|
             io.each_line do |line|
-              @branches << line.match('\s*\*?\s*(.*)$')[1]
+              branch_rev = line.match('\s*\*?\s*(.*?)\s*([0-9a-f]{40}).*$')
+              bran = Branch.new(branch_rev[1])
+              bran.revision =  branch_rev[2]
+              bran.scmid    =  branch_rev[2]
+              @branches << bran
             end
           end
           @branches.sort!
@@ -188,7 +189,7 @@ module Redmine
 
         def revisions(path, identifier_from, identifier_to, options={})
           revs = Revisions.new
-          cmd_args = %w|log --no-color --encoding=UTF-8 --raw --date=iso --pretty=fuller|
+          cmd_args = %w|log --no-color --encoding=UTF-8 --raw --date=iso --pretty=fuller --parents|
           cmd_args << "--reverse" if options[:reverse]
           cmd_args << "--all" if options[:all]
           cmd_args << "-n" << "#{options[:limit].to_i}" if options[:limit]
@@ -205,9 +206,10 @@ module Redmine
             parsing_descr = 0  #0: not parsing desc or files, 1: parsing desc, 2: parsing files
 
             io.each_line do |line|
-              if line =~ /^commit ([0-9a-f]{40})$/
+              if line =~ /^commit ([0-9a-f]{40})(( [0-9a-f]{40})*)$/
                 key = "commit"
                 value = $1
+                parents_str = $2
                 if (parsing_descr == 1 || parsing_descr == 2)
                   parsing_descr = 0
                   revision = Revision.new({
@@ -216,7 +218,8 @@ module Redmine
                     :author     => changeset[:author],
                     :time       => Time.parse(changeset[:date]),
                     :message    => changeset[:description],
-                    :paths      => files
+                    :paths      => files,
+                    :parents    => changeset[:parents]
                   })
                   if block_given?
                     yield revision
@@ -227,6 +230,9 @@ module Redmine
                   files = []
                 end
                 changeset[:commit] = $1
+                unless parents_str.nil? or parents_str == ""
+                  changeset[:parents] = parents_str.strip.split(' ')
+                end
               elsif (parsing_descr == 0) && line =~ /^(\w+):\s*(.*)$/
                 key = $1
                 value = $2
@@ -266,7 +272,8 @@ module Redmine
                 :author     => changeset[:author],
                 :time       => Time.parse(changeset[:date]),
                 :message    => changeset[:description],
-                :paths      => files
+                :paths      => files,
+                :parents    => changeset[:parents]
                  })
               if block_given?
                 yield revision
@@ -359,13 +366,16 @@ module Redmine
 
         def scm_cmd(*args, &block)
           repo_path = root_url || url
-          full_args = [GIT_BIN, '--git-dir', repo_path]
+          full_args = ['--git-dir', repo_path]
           if self.class.client_version_above?([1, 7, 2])
             full_args << '-c' << 'core.quotepath=false'
             full_args << '-c' << 'log.decorate=no'
           end
           full_args += args
-          ret = shellout(full_args.map { |e| shell_quote e.to_s }.join(' '), &block)
+          ret = shellout(
+                   self.class.sq_bin + ' ' + full_args.map { |e| shell_quote e.to_s }.join(' '),
+                   &block
+                   )
           if $? && $?.exitstatus != 0
             raise ScmCommandAborted, "git exited with non-zero status: #{$?.exitstatus}"
           end

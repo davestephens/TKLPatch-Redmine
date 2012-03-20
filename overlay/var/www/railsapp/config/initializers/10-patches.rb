@@ -4,7 +4,7 @@ require 'active_record'
 module ActiveRecord
   class Base
     include Redmine::I18n
-    
+
     # Translate attribute names for validation errors display
     def self.human_attribute_name(attr)
       l("field_#{attr.to_s.gsub(/_id$/, '')}", :default => attr)
@@ -65,26 +65,40 @@ end
 
 ActionView::Base.field_error_proc = Proc.new{ |html_tag, instance| "#{html_tag}" }
 
-# Adds :async_smtp and :async_sendmail delivery methods
-# to perform email deliveries asynchronously
 module AsynchronousMailer
+  # Adds :async_smtp and :async_sendmail delivery methods
+  # to perform email deliveries asynchronously
   %w(smtp sendmail).each do |type|
     define_method("perform_delivery_async_#{type}") do |mail|
       Thread.start do
         send "perform_delivery_#{type}", mail
-      end      
+      end
     end
+  end
+
+  # Adds a delivery method that writes emails in tmp/emails for testing purpose
+  def perform_delivery_tmp_file(mail)
+    dest_dir = File.join(Rails.root, 'tmp', 'emails')
+    Dir.mkdir(dest_dir) unless File.directory?(dest_dir)
+    File.open(File.join(dest_dir, mail.message_id.gsub(/[<>]/, '') + '.eml'), 'wb') {|f| f.write(mail.encoded) }
   end
 end
 
 ActionMailer::Base.send :include, AsynchronousMailer
 
-# TMail::Unquoter.convert_to_with_fallback_on_iso_8859_1 introduced in TMail 1.2.7
-# triggers a test failure in test_add_issue_with_japanese_keywords(MailHandlerTest)
 module TMail
+  # TMail::Unquoter.convert_to_with_fallback_on_iso_8859_1 introduced in TMail 1.2.7
+  # triggers a test failure in test_add_issue_with_japanese_keywords(MailHandlerTest)
   class Unquoter
     class << self
       alias_method :convert_to, :convert_to_without_fallback_on_iso_8859_1
+    end
+  end
+
+  # Patch for TMail 1.2.7. See http://www.redmine.org/issues/8751
+  class Encoder
+    def puts_meta(str)
+      add_text str
     end
   end
 end

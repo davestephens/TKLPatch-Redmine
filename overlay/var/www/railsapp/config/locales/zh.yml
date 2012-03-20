@@ -1,4 +1,4 @@
-# Chinese (China) translations for Ruby on Rails 
+# Chinese (China) translations for Ruby on Rails
 # by tsechingho (http://github.com/tsechingho)
 zh:
   # Text direction: Left-to-Right (ltr) or Right-to-Left (rtl)
@@ -11,7 +11,7 @@ zh:
       default: "%Y-%m-%d"
       short: "%b%d日"
       long: "%Y年%b%d日"
-      
+
     day_names: [星期天, 星期一, 星期二, 星期三, 星期四, 星期五, 星期六]
     abbr_day_names: [日, 一, 二, 三, 四, 五, 六]
 
@@ -73,7 +73,7 @@ zh:
   number:
     # Default format for numbers
     format:
-      separator: "." 
+      separator: "."
       delimiter: ""
       precision: 3
     human:
@@ -91,13 +91,12 @@ zh:
           gb: "GB"
           tb: "TB"
 
-        
 # Used in array.to_sentence.
   support:
     array:
       sentence_connector: "和"
       skip_last_comma: false
-      
+
   activerecord:
     errors:
       template:
@@ -131,7 +130,7 @@ zh:
         cant_link_an_issue_with_a_descendant: "问题不能关联到它的子任务"
 
   actionview_instancetag_blank_option: 请选择
-  
+
   general_text_No: '否'
   general_text_Yes: '是'
   general_text_no: '否'
@@ -142,7 +141,7 @@ zh:
   general_csv_encoding: gb18030
   general_pdf_encoding: gb18030
   general_first_day_of_week: '7'
-  
+
   notice_account_updated: 帐号更新成功
   notice_account_invalid_creditentials: 无效的用户名或密码
   notice_account_password_updated: 密码更新成功
@@ -173,7 +172,7 @@ zh:
   notice_unable_delete_time_entry: 无法删除工时
   notice_issue_done_ratios_updated: 问题完成度已更新。
   notice_gantt_chart_truncated: "The chart was truncated because it exceeds the maximum number of items that can be displayed (%{max})"
-  
+
   error_can_t_load_default_data: "无法载入默认设置：%{value}"
   error_scm_not_found: "版本库中不存在该条目和（或）其修订版本。"
   error_scm_command_failed: "访问版本库时发生错误：%{value}"
@@ -192,7 +191,7 @@ zh:
   error_unable_delete_issue_status: '无法删除问题状态'
   error_unable_to_connect: "无法连接 (%{value})"
   warning_attachments_not_saved: "%{count} 个文件保存失败"
-  
+
   mail_subject_lost_password: "您的 %{value} 密码"
   mail_body_lost_password: '请点击以下链接来修改您的密码：'
   mail_subject_register: "%{value}帐号激活"
@@ -207,10 +206,10 @@ zh:
   mail_body_wiki_content_added: "'%{id}' wiki页面已由 %{author} 添加。"
   mail_subject_wiki_content_updated: "'%{id}' wiki页面已更新。"
   mail_body_wiki_content_updated: "'%{id}' wiki页面已由 %{author} 更新。"
-  
+
   gui_validation_error: 1 个错误
   gui_validation_error_plural: "%{count} 个错误"
-  
+
   field_name: 名称
   field_description: 描述
   field_summary: 摘要
@@ -241,7 +240,7 @@ zh:
   field_is_default: 默认值
   field_tracker: 跟踪
   field_subject: 主题
-  field_due_date: 完成日期
+  field_due_date: 计划完成日期
   field_assigned_to: 指派给
   field_priority: 优先级
   field_fixed_version: 目标版本
@@ -273,7 +272,7 @@ zh:
   field_attr_mail: 邮件属性
   field_onthefly: 即时用户生成
   field_start_date: 开始日期
-  field_done_ratio: % 完成
+  field_done_ratio: "% 完成"
   field_auth_source: 认证模式
   field_hide_mail: 隐藏我的邮件地址
   field_comments: 注释
@@ -308,7 +307,7 @@ zh:
   field_assigned_to_role: 角色的成员
   field_text: 文本字段
   field_visible: 可见的
-  
+
   setting_app_title: 应用程序标题
   setting_app_subtitle: 应用程序子标题
   setting_welcome_text: 欢迎文字
@@ -334,7 +333,6 @@ zh:
   setting_time_format: 时间格式
   setting_cross_project_issue_relations: 允许不同项目之间的问题关联
   setting_issue_list_default_columns: 问题列表中显示的默认列
-  setting_repositories_encodings: 版本库编码
   setting_emails_header: 邮件头
   setting_emails_footer: 邮件签名
   setting_protocol: 协议
@@ -366,7 +364,7 @@ zh:
   setting_commit_logtime_enabled: 激活时间日志
   setting_commit_logtime_activity_id: 记录的活动
   setting_gantt_items_limit: 在甘特图上显示的最大记录数
-  
+
   permission_add_project: 新建项目
   permission_add_subprojects: 新建子项目
   permission_edit_project: 编辑项目
@@ -402,7 +400,7 @@ zh:
   permission_manage_files: 管理文件
   permission_view_files: 查看文件
   permission_manage_wiki: 管理Wiki
-  permission_rename_wiki_pages: 重命名Wiki页面
+  permission_rename_wiki_pages: 重定向/重命名Wiki页面
   permission_delete_wiki_pages: 删除Wiki页面
   permission_view_wiki_pages: 查看Wiki
   permission_view_wiki_edits: 查看Wiki历史记录
@@ -422,7 +420,7 @@ zh:
   permission_delete_own_messages: 删除自己的帖子
   permission_export_wiki_pages: 导出 wiki 页面
   permission_manage_subtasks: 管理子任务
-  
+
   project_module_issue_tracking: 问题跟踪
   project_module_time_tracking: 时间跟踪
   project_module_news: 新闻
@@ -433,7 +431,7 @@ zh:
   project_module_boards: 讨论区
   project_module_calendar: 日历
   project_module_gantt: 甘特图
-  
+
   label_user: 用户
   label_user_plural: 用户
   label_user_new: 新建用户
@@ -797,7 +795,7 @@ zh:
   label_project_copy_notifications: 复制项目时发送邮件通知
   label_principal_search: "搜索用户或组："
   label_user_search: "搜索用户："
-  
+
   button_login: 登录
   button_submit: 提交
   button_save: 保存
@@ -832,7 +830,7 @@ zh:
   button_archive: 存档
   button_unarchive: 取消存档
   button_reset: 重置
-  button_rename: 重命名
+  button_rename: 重命名/重定向
   button_change_password: 修改密码
   button_copy: 复制
   button_copy_and_follow: 复制并转到新问题
@@ -846,13 +844,13 @@ zh:
   status_active: 活动的
   status_registered: 已注册
   status_locked: 已锁定
-  
+
   version_status_open: 打开
   version_status_locked: 锁定
   version_status_closed: 关闭
 
   field_active: 活动
-  
+
   text_select_mail_notifications: 选择需要发送邮件通知的动作
   text_regexp_info: 例如：^[A-Z0-9]+$
   text_min_max_length_info: 0 表示没有限制
@@ -910,9 +908,9 @@ zh:
   text_wiki_page_destroy_children: 删除子页面及其所有下级页面
   text_wiki_page_reassign_children: 将子页面的上级页面设置为
   text_own_membership_delete_confirmation: 你正在删除你现有的某些或全部权限，如果这样做了你可能将会再也无法编辑该项目了。你确定要继续吗？
-  text_zoom_in: Zoom in
-  text_zoom_out: Zoom out
-  
+  text_zoom_in: 放大
+  text_zoom_out: 缩小
+
   default_role_manager: 管理人员
   default_role_developer: 开发人员
   default_role_reporter: 报告人员
@@ -934,48 +932,79 @@ zh:
   default_priority_immediate: 立刻
   default_activity_design: 设计
   default_activity_development: 开发
-  
+
   enumeration_issue_priorities: 问题优先级
   enumeration_doc_categories: 文档类别
   enumeration_activities: 活动（时间跟踪）
   enumeration_system_activity: 系统活动
 
-  field_warn_on_leaving_unsaved: Warn me when leaving a page with unsaved text
-  text_warn_on_leaving_unsaved: The current page contains unsaved text that will be lost if you leave this page.
-  label_my_queries: My custom queries
-  text_journal_changed_no_detail: "%{label} updated"
-  label_news_comment_added: Comment added to a news
-  button_expand_all: Expand all
-  button_collapse_all: Collapse all
-  label_additional_workflow_transitions_for_assignee: Additional transitions allowed when the user is the assignee
-  label_additional_workflow_transitions_for_author: Additional transitions allowed when the user is the author
-  label_bulk_edit_selected_time_entries: Bulk edit selected time entries
-  text_time_entries_destroy_confirmation: Are you sure you want to delete the selected time entr(y/ies)?
+  field_warn_on_leaving_unsaved: 当离开未保存内容的页面时，提示我
+  text_warn_on_leaving_unsaved: 若离开当前页面，则该页面内未保存的内容将丢失。
+  label_my_queries: 我的自定义查询
+  text_journal_changed_no_detail: "%{label} 已更新。"
+  label_news_comment_added: 添加到新闻的评论
+  button_expand_all: 展开所有
+  button_collapse_all: 合拢所有
+  label_additional_workflow_transitions_for_assignee: 当用户是问题的分配对象时所允许的问题状态转换
+  label_additional_workflow_transitions_for_author: 当用户是问题作者时所允许的问题状态转换
+  label_bulk_edit_selected_time_entries: 批量修改选定的时间条目
+  text_time_entries_destroy_confirmation: 是否确定要删除选定的时间条目？
   label_role_anonymous: Anonymous
   label_role_non_member: Non member
-  label_issue_note_added: Note added
-  label_issue_status_updated: Status updated
-  label_issue_priority_updated: Priority updated
-  label_issues_visibility_own: Issues created by or assigned to the user
-  field_issues_visibility: Issues visibility
-  label_issues_visibility_all: All issues
-  permission_set_own_issues_private: Set own issues public or private
-  field_is_private: Private
-  permission_set_issues_private: Set issues public or private
-  label_issues_visibility_public: All non private issues
-  text_issues_destroy_descendants_confirmation: This will also delete %{count} subtask(s).
+  label_issue_note_added: 问题备注已添加
+  label_issue_status_updated: 问题状态更新
+  label_issue_priority_updated: 问题优先级更新
+  label_issues_visibility_own: 创建或分配给用户的问题
+  field_issues_visibility: 问题可见
+  label_issues_visibility_all: 全部问题
+  permission_set_own_issues_private: 设置自己的问题为公开或私有
+  field_is_private: 私有
+  permission_set_issues_private: 设置问题为公开或私有
+  label_issues_visibility_public: 全部非私有问题
+  text_issues_destroy_descendants_confirmation: 此操作同时会删除 %{count} 个子任务。
 
   field_commit_logs_encoding: 提交注释的编码
-  field_scm_path_encoding: Path encoding
-  text_scm_path_encoding_note: "Default: UTF-8"
-  field_path_to_repository: Path to repository
-  field_root_directory: Root directory
-  field_cvs_module: Module
+  field_scm_path_encoding: 路径编码
+  text_scm_path_encoding_note: "默认: UTF-8"
+  field_path_to_repository: 库路径
+  field_root_directory: 根目录
+  field_cvs_module: CVS Module
   field_cvsroot: CVSROOT
-  text_git_repository_note: Bare and local repository (e.g. /gitrepo, c:\gitrepo)
-  text_mercurial_repository_note: Local repository (e.g. /hgrepo, c:\hgrepo)
-  text_scm_command: Command
-  text_scm_command_version: Version
-  label_git_report_last_commit: Report last commit for files and directories
-  text_scm_config: You can configure your scm commands in config/configuration.yml. Please restart the application after editing it.
-  text_scm_command_not_available: Scm command is not available. Please check settings on the administration panel.
+  text_mercurial_repository_note: 本地库 (e.g. /hgrepo, c:\hgrepo)
+  text_scm_command: 命令
+  text_scm_command_version: 版本
+  label_git_report_last_commit: 报告最后一次文件/目录提交
+  text_scm_config: 您可以在config/configuration.yml中配置您的SCM命令。 请在编辑后，重启Redmine应用。
+  text_scm_command_not_available: Scm命令不可用。 请检查管理面板的配置。
+  text_git_repository_note: 库中无内容。(e.g. /gitrepo, c:\gitrepo)
+  notice_issue_successful_create: 问题 %{id} 已创建。
+  label_between: 介于
+  setting_issue_group_assignment: 允许问题被分配给组
+  label_diff: diff
+  description_query_sort_criteria_direction: 排序方式
+  description_project_scope: 搜索范围
+  description_filter: 过滤器
+  description_user_mail_notification: 邮件通知设置
+  description_date_from: 输入开始日期
+  description_message_content: 信息内容
+  description_available_columns: 备选列
+  description_date_range_interval: 按开始日期和结束日期选择范围
+  description_issue_category_reassign: 选择问题类别
+  description_search: 搜索字段
+  description_notes: 批注
+  description_date_range_list: 从列表中选择范围
+  description_choose_project: 项目
+  description_date_to: 输入结束日期
+  description_query_sort_criteria_attribute: 排序方式
+  description_wiki_subpages_reassign: 选择父页面
+  description_selected_columns: 已选列
+  label_parent_revision: 父修订
+  label_child_revision: 子修订
+  error_scm_annotate_big_text_file: 输入文本内容超长，无法输入。
+  setting_default_issue_start_date_to_creation_date: 使用当前日期作为新问题的开始日期
+  button_edit_section: Edit this section
+  setting_repositories_encodings: Attachments and repositories encodings
+  description_all_columns: All Columns
+  button_export: Export
+  label_export_options: "%{export_format} export options"
+  error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})

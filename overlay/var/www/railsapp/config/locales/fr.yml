@@ -1,4 +1,4 @@
-# French translations for Ruby on Rails 
+# French translations for Ruby on Rails
 # by Christian Lescuyer (christian@flyingcoders.com)
 # contributor: Sebastien Grosjean - ZenCocoon.com
 # contributor: Thibaut Cuvelier - Developpez.com
@@ -21,7 +21,7 @@ fr:
       - :day
       - :month
       - :year
-  
+
   time:
     formats:
       default: "%d/%m/%Y %H:%M"
@@ -78,7 +78,7 @@ fr:
       hour:   "Heure"
       minute: "Minute"
       second: "Seconde"
-  
+
   number:
     format:
       precision: 3
@@ -102,7 +102,7 @@ fr:
           mb: "Mo"
           gb: "Go"
           tb: "To"
-  
+
   support:
     array:
       sentence_connector: 'et'
@@ -110,11 +110,11 @@ fr:
       word_connector: ", "
       two_words_connector: " et "
       last_word_connector: " et "
-  
+
   activerecord:
     errors:
       template:
-        header: 
+        header:
           one: "Impossible d'enregistrer %{model} : une erreur"
           other: "Impossible d'enregistrer %{model} : %{count} erreurs."
         body: "Veuillez vérifier les champs suivants :"
@@ -145,7 +145,7 @@ fr:
         cant_link_an_issue_with_a_descendant: "Une demande ne peut pas être liée à l'une de ses sous-tâches"
 
   actionview_instancetag_blank_option: Choisir
-  
+
   general_text_No: 'Non'
   general_text_Yes: 'Oui'
   general_text_no: 'non'
@@ -156,7 +156,7 @@ fr:
   general_csv_encoding: ISO-8859-1
   general_pdf_encoding: UTF-8
   general_first_day_of_week: '1'
-  
+
   notice_account_updated: Le compte a été mis à jour avec succès.
   notice_account_invalid_creditentials: Identifiant ou mot de passe invalide.
   notice_account_password_updated: Mot de passe mis à jour avec succès.
@@ -185,7 +185,8 @@ fr:
   notice_issue_done_ratios_updated: L'avancement des demandes a été mis à jour.
   notice_api_access_key_reseted: Votre clé d'accès API a été réinitialisée.
   notice_gantt_chart_truncated: "Le diagramme a été tronqué car il excède le nombre maximal d'éléments pouvant être affichés (%{max})"
-  
+  notice_issue_successful_create: "La demande %{id} a été créée."
+
   error_can_t_load_default_data: "Une erreur s'est produite lors du chargement du paramétrage : %{value}"
   error_scm_not_found: "L'entrée et/ou la révision demandée n'existe pas dans le dépôt."
   error_scm_command_failed: "Une erreur s'est produite lors de l'accès au dépôt : %{value}"
@@ -196,9 +197,10 @@ fr:
   error_workflow_copy_source: 'Veuillez sélectionner un tracker et/ou un rôle source'
   error_workflow_copy_target: 'Veuillez sélectionner les trackers et rôles cibles'
   error_issue_done_ratios_not_updated: L'avancement des demandes n'a pas pu être mis à jour.
-  
+  error_attachment_too_big: Ce fichier ne peut pas être attaché car il excède la taille maximale autorisée (%{max_size})
+
   warning_attachments_not_saved: "%{count} fichier(s) n'ont pas pu être sauvegardés."
-  
+
   mail_subject_lost_password: "Votre mot de passe %{value}"
   mail_body_lost_password: 'Pour changer votre mot de passe, cliquez sur le lien suivant :'
   mail_subject_register: "Activation de votre compte %{value}"
@@ -213,10 +215,10 @@ fr:
   mail_body_wiki_content_added: "La page wiki '%{id}' a été ajoutée par %{author}."
   mail_subject_wiki_content_updated: "Page wiki '%{id}' mise à jour"
   mail_body_wiki_content_updated: "La page wiki '%{id}' a été mise à jour par %{author}."
-  
+
   gui_validation_error: 1 erreur
   gui_validation_error_plural: "%{count} erreurs"
-  
+
   field_name: Nom
   field_description: Description
   field_summary: Résumé
@@ -321,26 +323,25 @@ fr:
   setting_default_language: Langue par défaut
   setting_login_required: Authentification obligatoire
   setting_self_registration: Inscription des nouveaux utilisateurs
-  setting_attachment_max_size: Taille max des fichiers
-  setting_issues_export_limit: Limite export demandes
+  setting_attachment_max_size: Taille maximale des fichiers
+  setting_issues_export_limit: Limite d'exportation des demandes
   setting_mail_from: Adresse d'émission
   setting_bcc_recipients: Destinataires en copie cachée (cci)
-  setting_plain_text_mail: Mail texte brut (non HTML)
+  setting_plain_text_mail: Mail en texte brut (non HTML)
   setting_host_name: Nom d'hôte et chemin
   setting_text_formatting: Formatage du texte
-  setting_wiki_compression: Compression historique wiki
-  setting_feeds_limit: Limite du contenu des flux RSS
+  setting_wiki_compression: Compression de l'historique des pages wiki
+  setting_feeds_limit: Nombre maximal d'éléments dans les flux Atom
   setting_default_projects_public: Définir les nouveaux projets comme publics par défaut
-  setting_autofetch_changesets: Récupération auto. des commits
+  setting_autofetch_changesets: Récupération automatique des commits
   setting_sys_api_enabled: Activer les WS pour la gestion des dépôts
   setting_commit_ref_keywords: Mots-clés de référencement
   setting_commit_fix_keywords: Mots-clés de résolution
-  setting_autologin: Autologin
+  setting_autologin: Durée maximale de connexion automatique
   setting_date_format: Format de date
   setting_time_format: Format d'heure
   setting_cross_project_issue_relations: Autoriser les relations entre demandes de différents projets
   setting_issue_list_default_columns: Colonnes affichées par défaut sur la liste des demandes
-  setting_repositories_encodings: Encodages des dépôts
   setting_emails_footer: Pied-de-page des emails
   setting_protocol: Protocole
   setting_per_page_options: Options d'objets affichés par page
@@ -370,7 +371,9 @@ fr:
   setting_commit_logtime_enabled: Permettre la saisie de temps
   setting_commit_logtime_activity_id: Activité pour le temps saisi
   setting_gantt_items_limit: Nombre maximum d'éléments affichés sur le gantt
-  
+  setting_issue_group_assignment: Permettre l'assignement des demandes aux groupes
+  setting_default_issue_start_date_to_creation_date: Donner à la date de début d'une nouvelle demande la valeur de la date du jour
+
   permission_add_project: Créer un projet
   permission_add_subprojects: Créer des sous-projets
   permission_edit_project: Modifier le projet
@@ -428,7 +431,7 @@ fr:
   permission_export_wiki_pages: Exporter les pages
   permission_manage_project_activities: Gérer les activités
   permission_manage_subtasks: Gérer les sous-tâches
-  
+
   project_module_issue_tracking: Suivi des demandes
   project_module_time_tracking: Suivi du temps passé
   project_module_news: Publication d'annonces
@@ -437,7 +440,7 @@ fr:
   project_module_wiki: Wiki
   project_module_repository: Dépôt de sources
   project_module_boards: Forums de discussion
-  
+
   label_user: Utilisateur
   label_user_plural: Utilisateurs
   label_user_new: Nouvel utilisateur
@@ -801,7 +804,8 @@ fr:
   label_issues_visibility_all: Toutes les demandes
   label_issues_visibility_public: Toutes les demandes non privées
   label_issues_visibility_own: Demandes créées par ou assignées à l'utilisateur
-  
+  label_export_options: Options d'exportation %{export_format}
+
   button_login: Connexion
   button_submit: Soumettre
   button_save: Sauvegarder
@@ -847,15 +851,17 @@ fr:
   button_quote: Citer
   button_duplicate: Dupliquer
   button_show: Afficher
-  
+  button_edit_section: Modifier cette section
+  button_export: Exporter
+
   status_active: actif
   status_registered: enregistré
   status_locked: verrouillé
-  
+
   version_status_open: ouvert
   version_status_locked: verrouillé
   version_status_closed: fermé
-  
+
   text_select_mail_notifications: Actions pour lesquelles une notification par e-mail est envoyée
   text_regexp_info: ex. ^[A-Z0-9]+$
   text_min_max_length_info: 0 pour aucune restriction
@@ -910,7 +916,7 @@ fr:
   text_wiki_page_reassign_children: "Réaffecter les sous-pages à cette page"
   text_own_membership_delete_confirmation: "Vous allez supprimer tout ou partie de vos permissions sur ce projet et ne serez peut-être plus autorisé à modifier ce projet.\nEtes-vous sûr de vouloir continuer ?"
   text_warn_on_leaving_unsaved: "Cette page contient du texte non sauvegardé qui sera perdu si vous quittez la page."
-  
+
   default_role_manager: "Manager "
   default_role_developer: "Développeur "
   default_role_reporter: "Rapporteur "
@@ -932,12 +938,13 @@ fr:
   default_priority_immediate: Immédiat
   default_activity_design: Conception
   default_activity_development: Développement
-  
+
   enumeration_issue_priorities: Priorités des demandes
   enumeration_doc_categories: Catégories des documents
   enumeration_activities: Activités (suivi du temps)
   label_greater_or_equal: ">="
   label_less_or_equal: "<="
+  label_between: entre
   label_view_all_revisions: Voir toutes les révisions
   label_tag: Tag
   label_branch: Branche
@@ -984,10 +991,33 @@ fr:
   field_root_directory: Répertoire racine
   field_cvs_module: Module
   field_cvsroot: CVSROOT
-  text_git_repository_note: "Dépôt nu (bare) et local (exemples : /gitrepo, c:\gitrepo)"
-  text_mercurial_repository_note: "Dépôt local (exemples : /hgrepo, c:\hgrepo)"
+  text_mercurial_repository_note: "Dépôt local (exemples : /hgrepo, c:\\hgrepo)"
   text_scm_command: Commande
   text_scm_command_version: Version
   label_git_report_last_commit: Afficher le dernier commit des fichiers et répertoires
   text_scm_config: Vous pouvez configurer les commandes des SCM dans config/configuration.yml. Redémarrer l'application après modification.
   text_scm_command_not_available: Ce SCM n'est pas disponible. Vérifier les paramètres dans la section administration.
+  label_diff: diff
+  text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
+  description_query_sort_criteria_direction: Ordre de tri
+  description_project_scope: Périmètre de recherche
+  description_filter: Filtre
+  description_user_mail_notification: Option de notification
+  description_date_from: Date de début
+  description_message_content: Contenu du message
+  description_available_columns: Colonnes disponibles
+  description_all_columns: Toutes les colonnes
+  description_date_range_interval: Choisir une période
+  description_issue_category_reassign: Choisir une catégorie
+  description_search: Champ de recherche
+  description_notes: Notes
+  description_date_range_list: Choisir une période prédéfinie
+  description_choose_project: Projets
+  description_date_to: Date de fin
+  description_query_sort_criteria_attribute: Critère de tri
+  description_wiki_subpages_reassign: Choisir une nouvelle page parent
+  description_selected_columns: Colonnes sélectionnées
+  label_parent_revision: Parent
+  label_child_revision: Enfant
+  error_scm_annotate_big_text_file: Cette entrée ne peut pas être annotée car elle excède la taille maximale.
+  setting_repositories_encodings: Encodages des fichiers et des dépôts

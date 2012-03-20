@@ -17,13 +17,13 @@
 
 module Redmine
   module Ciphering
-    def self.included(base) 
+    def self.included(base)
       base.extend ClassMethods
     end
-    
+
     class << self
       def encrypt_text(text)
-        if cipher_key.blank?
+        if cipher_key.blank? || text.blank?
           text
         else
           c = OpenSSL::Cipher::Cipher.new("aes-256-cbc")
@@ -36,9 +36,13 @@ module Redmine
           "aes-256-cbc:" + [e, iv].map {|v| Base64.encode64(v).strip}.join('--')
         end
       end
-      
+
       def decrypt_text(text)
         if text && match = text.match(/\Aaes-256-cbc:(.+)\Z/)
+          if cipher_key.blank?
+            logger.error "Attempt to decrypt a ciphered text with no cipher key configured in config/configuration.yml" if logger
+            return text
+          end
           text = match[1]
           c = OpenSSL::Cipher::Cipher.new("aes-256-cbc")
           e, iv = text.split("--").map {|s| Base64.decode64(s)}
@@ -51,13 +55,17 @@ module Redmine
           text
         end
       end
-      
+
       def cipher_key
         key = Redmine::Configuration['database_cipher_key'].to_s
         key.blank? ? nil : Digest::SHA256.hexdigest(key)
       end
+      
+      def logger
+        Rails.logger
+      end
     end
-  
+
     module ClassMethods
       def encrypt_all(attribute)
         transaction do
@@ -68,7 +76,7 @@ module Redmine
           end
         end ? true : false
       end
-      
+
       def decrypt_all(attribute)
         transaction do
           all.each do |object|
@@ -79,14 +87,14 @@ module Redmine
         end
       end ? true : false
     end
-    
+
     private
-    
+
     # Returns the value of the given ciphered attribute
     def read_ciphered_attribute(attribute)
       Redmine::Ciphering.decrypt_text(read_attribute(attribute))
     end
-    
+
     # Sets the value of the given ciphered attribute
     def write_ciphered_attribute(attribute, value)
       write_attribute(attribute, Redmine::Ciphering.encrypt_text(value))

@@ -43,6 +43,8 @@ class IssuesControllerTest < ActionController::TestCase
            :journal_details,
            :queries
 
+  include Redmine::I18n
+
   def setup
     @controller = IssuesController.new
     @request    = ActionController::TestRequest.new
@@ -55,7 +57,7 @@ class IssuesControllerTest < ActionController::TestCase
 
     get :index
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_nil assigns(:project)
     assert_tag :tag => 'a', :content => /Can't print recipes/
@@ -71,18 +73,7 @@ class IssuesControllerTest < ActionController::TestCase
     EnabledModule.delete_all("name = 'issue_tracking' AND project_id = 1")
     get :index
     assert_response :success
-    assert_template 'index.rhtml'
-    assert_not_nil assigns(:issues)
-    assert_nil assigns(:project)
-    assert_no_tag :tag => 'a', :content => /Can't print recipes/
-    assert_tag :tag => 'a', :content => /Subproject issue/
-  end
-
-  def test_index_should_not_list_issues_when_module_disabled
-    EnabledModule.delete_all("name = 'issue_tracking' AND project_id = 1")
-    get :index
-    assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_nil assigns(:project)
     assert_no_tag :tag => 'a', :content => /Can't print recipes/
@@ -100,7 +91,7 @@ class IssuesControllerTest < ActionController::TestCase
     Setting.display_subprojects_issues = 0
     get :index, :project_id => 1
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_tag :tag => 'a', :content => /Can't print recipes/
     assert_no_tag :tag => 'a', :content => /Subproject issue/
@@ -110,7 +101,7 @@ class IssuesControllerTest < ActionController::TestCase
     Setting.display_subprojects_issues = 1
     get :index, :project_id => 1
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_tag :tag => 'a', :content => /Can't print recipes/
     assert_tag :tag => 'a', :content => /Subproject issue/
@@ -122,7 +113,7 @@ class IssuesControllerTest < ActionController::TestCase
     Setting.display_subprojects_issues = 1
     get :index, :project_id => 1
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_tag :tag => 'a', :content => /Can't print recipes/
     assert_tag :tag => 'a', :content => /Subproject issue/
@@ -132,7 +123,7 @@ class IssuesControllerTest < ActionController::TestCase
   def test_index_with_project_and_default_filter
     get :index, :project_id => 1, :set_filter => 1
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
 
     query = assigns(:query)
@@ -147,7 +138,7 @@ class IssuesControllerTest < ActionController::TestCase
       :op => {'tracker_id' => '='},
       :v => {'tracker_id' => ['1']}
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
 
     query = assigns(:query)
@@ -155,10 +146,80 @@ class IssuesControllerTest < ActionController::TestCase
     assert_equal({'tracker_id' => {:operator => '=', :values => ['1']}}, query.filters)
   end
 
+  def test_index_with_short_filters
+    to_test = {
+      'status_id' => {
+        'o' => { :op => 'o', :values => [''] },
+        'c' => { :op => 'c', :values => [''] },
+        '7' => { :op => '=', :values => ['7'] },
+        '7|3|4' => { :op => '=', :values => ['7', '3', '4'] },
+        '=7' => { :op => '=', :values => ['7'] },
+        '!3' => { :op => '!', :values => ['3'] },
+        '!7|3|4' => { :op => '!', :values => ['7', '3', '4'] }},
+      'subject' => {
+        'This is a subject' => { :op => '=', :values => ['This is a subject'] },
+        'o' => { :op => '=', :values => ['o'] },
+        '~This is part of a subject' => { :op => '~', :values => ['This is part of a subject'] },
+        '!~This is part of a subject' => { :op => '!~', :values => ['This is part of a subject'] }},
+      'tracker_id' => {
+        '3' => { :op => '=', :values => ['3'] },
+        '=3' => { :op => '=', :values => ['3'] }},
+      'start_date' => {
+        '2011-10-12' => { :op => '=', :values => ['2011-10-12'] },
+        '=2011-10-12' => { :op => '=', :values => ['2011-10-12'] },
+        '>=2011-10-12' => { :op => '>=', :values => ['2011-10-12'] },
+        '<=2011-10-12' => { :op => '<=', :values => ['2011-10-12'] },
+        '><2011-10-01|2011-10-30' => { :op => '><', :values => ['2011-10-01', '2011-10-30'] },
+        '<t+2' => { :op => '<t+', :values => ['2'] },
+        '>t+2' => { :op => '>t+', :values => ['2'] },
+        't+2' => { :op => 't+', :values => ['2'] },
+        't' => { :op => 't', :values => [''] },
+        'w' => { :op => 'w', :values => [''] },
+        '>t-2' => { :op => '>t-', :values => ['2'] },
+        '<t-2' => { :op => '<t-', :values => ['2'] },
+        't-2' => { :op => 't-', :values => ['2'] }},
+      'created_on' => {
+        '>=2011-10-12' => { :op => '>=', :values => ['2011-10-12'] },
+        '<t-2' => { :op => '<t-', :values => ['2'] },
+        '>t-2' => { :op => '>t-', :values => ['2'] },
+        't-2' => { :op => 't-', :values => ['2'] }},
+      'cf_1' => {
+        'c' => { :op => '=', :values => ['c'] },
+        '!c' => { :op => '!', :values => ['c'] },
+        '!*' => { :op => '!*', :values => [''] },
+        '*' => { :op => '*', :values => [''] }},
+      'estimated_hours' => {
+        '=13.4' => { :op => '=', :values => ['13.4'] },
+        '>=45' => { :op => '>=', :values => ['45'] },
+        '<=125' => { :op => '<=', :values => ['125'] },
+        '><10.5|20.5' => { :op => '><', :values => ['10.5', '20.5'] },
+        '!*' => { :op => '!*', :values => [''] },
+        '*' => { :op => '*', :values => [''] }}
+    }
+
+    default_filter = { 'status_id' => {:operator => 'o', :values => [''] }}
+
+    to_test.each do |field, expression_and_expected|
+      expression_and_expected.each do |filter_expression, expected|
+
+        get :index, :set_filter => 1, field => filter_expression
+
+        assert_response :success
+        assert_template 'index'
+        assert_not_nil assigns(:issues)
+
+        query = assigns(:query)
+        assert_not_nil query
+        assert query.has_filter?(field)
+        assert_equal(default_filter.merge({field => {:operator => expected[:op], :values => expected[:values]}}), query.filters)
+      end
+    end
+  end
+
   def test_index_with_project_and_empty_filters
     get :index, :project_id => 1, :set_filter => 1, :fields => ['']
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
 
     query = assigns(:query)
@@ -170,7 +231,7 @@ class IssuesControllerTest < ActionController::TestCase
   def test_index_with_query
     get :index, :project_id => 1, :query_id => 5
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_nil assigns(:issue_count_by_group)
   end
@@ -178,7 +239,7 @@ class IssuesControllerTest < ActionController::TestCase
   def test_index_with_query_grouped_by_tracker
     get :index, :project_id => 1, :query_id => 6
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_not_nil assigns(:issue_count_by_group)
   end
@@ -186,70 +247,250 @@ class IssuesControllerTest < ActionController::TestCase
   def test_index_with_query_grouped_by_list_custom_field
     get :index, :project_id => 1, :query_id => 9
     assert_response :success
-    assert_template 'index.rhtml'
+    assert_template 'index'
     assert_not_nil assigns(:issues)
     assert_not_nil assigns(:issue_count_by_group)
   end
-  
+
+  def test_index_with_query_id_and_project_id_should_set_session_query
+    get :index, :project_id => 1, :query_id => 4
+    assert_response :success
+    assert_kind_of Hash, session[:query]
+    assert_equal 4, session[:query][:id]
+    assert_equal 1, session[:query][:project_id]
+  end
+
+  def test_index_with_cross_project_query_in_session_should_show_project_issues
+    q = Query.create!(:name => "test", :user_id => 2, :is_public => false, :project => nil)
+    @request.session[:query] = {:id => q.id, :project_id => 1}
+
+    with_settings :display_subprojects_issues => '0' do
+      get :index, :project_id => 1
+    end
+    assert_response :success
+    assert_not_nil assigns(:query)
+    assert_equal q.id, assigns(:query).id
+    assert_equal 1, assigns(:query).project_id
+    assert_equal [1], assigns(:issues).map(&:project_id).uniq
+  end
+
   def test_private_query_should_not_be_available_to_other_users
     q = Query.create!(:name => "private", :user => User.find(2), :is_public => false, :project => nil)
     @request.session[:user_id] = 3
-    
+
     get :index, :query_id => q.id
     assert_response 403
   end
-  
+
   def test_private_query_should_be_available_to_its_user
     q = Query.create!(:name => "private", :user => User.find(2), :is_public => false, :project => nil)
     @request.session[:user_id] = 2
-    
+
     get :index, :query_id => q.id
     assert_response :success
   end
-  
+
   def test_public_query_should_be_available_to_other_users
     q = Query.create!(:name => "private", :user => User.find(2), :is_public => true, :project => nil)
     @request.session[:user_id] = 3
-    
+
     get :index, :query_id => q.id
     assert_response :success
   end
 
-  def test_index_sort_by_field_not_included_in_columns
-    Setting.issue_list_default_columns = %w(subject author)
-    get :index, :sort => 'tracker'
-  end
-
-  def test_index_csv_with_project
-    Setting.default_language = 'en'
-
+  def test_index_csv
     get :index, :format => 'csv'
     assert_response :success
     assert_not_nil assigns(:issues)
     assert_equal 'text/csv', @response.content_type
     assert @response.body.starts_with?("#,")
+    lines = @response.body.chomp.split("\n")
+    assert_equal assigns(:query).columns.size + 1, lines[0].split(',').size
+  end
 
+  def test_index_csv_with_project
     get :index, :project_id => 1, :format => 'csv'
     assert_response :success
     assert_not_nil assigns(:issues)
     assert_equal 'text/csv', @response.content_type
   end
 
+  def test_index_csv_with_description
+    get :index, :format => 'csv', :description => '1'
+    assert_response :success
+    assert_not_nil assigns(:issues)
+    assert_equal 'text/csv', @response.content_type
+    assert @response.body.starts_with?("#,")
+    lines = @response.body.chomp.split("\n")
+    assert_equal assigns(:query).columns.size + 2, lines[0].split(',').size
+  end
+
+  def test_index_csv_with_all_columns
+    get :index, :format => 'csv', :columns => 'all'
+    assert_response :success
+    assert_not_nil assigns(:issues)
+    assert_equal 'text/csv', @response.content_type
+    assert @response.body.starts_with?("#,")
+    lines = @response.body.chomp.split("\n")
+    assert_equal assigns(:query).available_columns.size + 1, lines[0].split(',').size
+  end
+
+  def test_index_csv_big_5
+    with_settings :default_language => "zh-TW" do
+      str_utf8  = "\xe4\xb8\x80\xe6\x9c\x88"
+      str_big5  = "\xa4@\xa4\xeb"
+      if str_utf8.respond_to?(:force_encoding)
+        str_utf8.force_encoding('UTF-8')
+        str_big5.force_encoding('Big5')
+      end
+      issue = Issue.new(:project_id => 1, :tracker_id => 1, :author_id => 3,
+                        :status_id => 1, :priority => IssuePriority.all.first,
+                        :subject => str_utf8)
+      assert issue.save
+
+      get :index, :project_id => 1, 
+                  :f => ['subject'], 
+                  :op => '=', :values => [str_utf8],
+                  :format => 'csv'
+      assert_equal 'text/csv', @response.content_type
+      lines = @response.body.chomp.split("\n")
+      s1 = "\xaa\xac\xbaA"
+      if str_utf8.respond_to?(:force_encoding)
+        s1.force_encoding('Big5')
+      end
+      assert lines[0].include?(s1)
+      assert lines[1].include?(str_big5)
+    end
+  end
+
+  def test_index_csv_cannot_convert_should_be_replaced_big_5
+    with_settings :default_language => "zh-TW" do
+      str_utf8  = "\xe4\xbb\xa5\xe5\x86\x85"
+      if str_utf8.respond_to?(:force_encoding)
+        str_utf8.force_encoding('UTF-8')
+      end
+      issue = Issue.new(:project_id => 1, :tracker_id => 1, :author_id => 3,
+                        :status_id => 1, :priority => IssuePriority.all.first,
+                        :subject => str_utf8)
+      assert issue.save
+
+      get :index, :project_id => 1, 
+                  :f => ['subject'], 
+                  :op => '=', :values => [str_utf8],
+                  :c => ['status', 'subject'],
+                  :format => 'csv',
+                  :set_filter => 1
+      assert_equal 'text/csv', @response.content_type
+      lines = @response.body.chomp.split("\n")
+      s1 = "\xaa\xac\xbaA" # status
+      if str_utf8.respond_to?(:force_encoding)
+        s1.force_encoding('Big5')
+      end
+      assert lines[0].include?(s1)
+      s2 = lines[1].split(",")[2]
+      if s1.respond_to?(:force_encoding)
+        s3 = "\xa5H?" # subject
+        s3.force_encoding('Big5')
+        assert_equal s3, s2
+      elsif RUBY_PLATFORM == 'java'
+        assert_equal "??", s2
+      else
+        assert_equal "\xa5H???", s2
+      end
+    end
+  end
+
+  def test_index_csv_tw
+    with_settings :default_language => "zh-TW" do
+      str1  = "test_index_csv_tw"
+      issue = Issue.new(:project_id => 1, :tracker_id => 1, :author_id => 3,
+                        :status_id => 1, :priority => IssuePriority.all.first,
+                        :subject => str1, :estimated_hours => '1234.5')
+      assert issue.save
+      assert_equal 1234.5, issue.estimated_hours
+
+      get :index, :project_id => 1, 
+                  :f => ['subject'], 
+                  :op => '=', :values => [str1],
+                  :c => ['estimated_hours', 'subject'],
+                  :format => 'csv',
+                  :set_filter => 1
+      assert_equal 'text/csv', @response.content_type
+      lines = @response.body.chomp.split("\n")
+      assert_equal "#{issue.id},1234.5,#{str1}", lines[1]
+
+      str_tw = "Traditional Chinese (\xe7\xb9\x81\xe9\xab\x94\xe4\xb8\xad\xe6\x96\x87)"
+      if str_tw.respond_to?(:force_encoding)
+        str_tw.force_encoding('UTF-8')
+      end
+      assert_equal str_tw, l(:general_lang_name)
+      assert_equal ',', l(:general_csv_separator)
+      assert_equal '.', l(:general_csv_decimal_separator)
+    end
+  end
+
+  def test_index_csv_fr
+    with_settings :default_language => "fr" do
+      str1  = "test_index_csv_fr"
+      issue = Issue.new(:project_id => 1, :tracker_id => 1, :author_id => 3,
+                        :status_id => 1, :priority => IssuePriority.all.first,
+                        :subject => str1, :estimated_hours => '1234.5')
+      assert issue.save
+      assert_equal 1234.5, issue.estimated_hours
+
+      get :index, :project_id => 1, 
+                  :f => ['subject'], 
+                  :op => '=', :values => [str1],
+                  :c => ['estimated_hours', 'subject'],
+                  :format => 'csv',
+                  :set_filter => 1
+      assert_equal 'text/csv', @response.content_type
+      lines = @response.body.chomp.split("\n")
+      assert_equal "#{issue.id};1234,5;#{str1}", lines[1]
+
+      str_fr = "Fran\xc3\xa7ais"
+      if str_fr.respond_to?(:force_encoding)
+        str_fr.force_encoding('UTF-8')
+      end
+      assert_equal str_fr, l(:general_lang_name)
+      assert_equal ';', l(:general_csv_separator)
+      assert_equal ',', l(:general_csv_decimal_separator)
+    end
+  end
+
   def test_index_pdf
-    get :index, :format => 'pdf'
-    assert_response :success
-    assert_not_nil assigns(:issues)
-    assert_equal 'application/pdf', @response.content_type
+    ["en", "zh", "zh-TW", "ja", "ko"].each do |lang|
+      with_settings :default_language => lang do
 
-    get :index, :project_id => 1, :format => 'pdf'
-    assert_response :success
-    assert_not_nil assigns(:issues)
-    assert_equal 'application/pdf', @response.content_type
+        get :index
+        assert_response :success
+        assert_template 'index'
 
-    get :index, :project_id => 1, :query_id => 6, :format => 'pdf'
-    assert_response :success
-    assert_not_nil assigns(:issues)
-    assert_equal 'application/pdf', @response.content_type
+        if lang == "ja"
+          if RUBY_PLATFORM != 'java'
+            assert_equal "CP932", l(:general_pdf_encoding)
+          end
+          if RUBY_PLATFORM == 'java' && l(:general_pdf_encoding) == "CP932"
+            next
+          end
+        end
+
+        get :index, :format => 'pdf'
+        assert_response :success
+        assert_not_nil assigns(:issues)
+        assert_equal 'application/pdf', @response.content_type
+
+        get :index, :project_id => 1, :format => 'pdf'
+        assert_response :success
+        assert_not_nil assigns(:issues)
+        assert_equal 'application/pdf', @response.content_type
+
+        get :index, :project_id => 1, :query_id => 6, :format => 'pdf'
+        assert_response :success
+        assert_not_nil assigns(:issues)
+        assert_equal 'application/pdf', @response.content_type
+      end
+    end
   end
 
   def test_index_pdf_with_query_grouped_by_list_custom_field
@@ -274,6 +515,49 @@ class IssuesControllerTest < ActionController::TestCase
     assert_equal issues.sort {|a,b| a.tracker == b.tracker ? b.id <=> a.id : a.tracker <=> b.tracker }.collect(&:id), issues.collect(&:id)
   end
 
+  def test_index_sort_by_field_not_included_in_columns
+    Setting.issue_list_default_columns = %w(subject author)
+    get :index, :sort => 'tracker'
+  end
+  
+  def test_index_sort_by_assigned_to
+    get :index, :sort => 'assigned_to'
+    assert_response :success
+    assignees = assigns(:issues).collect(&:assigned_to).compact
+    assert_equal assignees.sort, assignees
+  end
+  
+  def test_index_sort_by_assigned_to_desc
+    get :index, :sort => 'assigned_to:desc'
+    assert_response :success
+    assignees = assigns(:issues).collect(&:assigned_to).compact
+    assert_equal assignees.sort.reverse, assignees
+  end
+  
+  def test_index_group_by_assigned_to
+    get :index, :group_by => 'assigned_to', :sort => 'priority'
+    assert_response :success
+  end
+  
+  def test_index_sort_by_author
+    get :index, :sort => 'author'
+    assert_response :success
+    authors = assigns(:issues).collect(&:author)
+    assert_equal authors.sort, authors
+  end
+  
+  def test_index_sort_by_author_desc
+    get :index, :sort => 'author:desc'
+    assert_response :success
+    authors = assigns(:issues).collect(&:author)
+    assert_equal authors.sort.reverse, authors
+  end
+  
+  def test_index_group_by_author
+    get :index, :group_by => 'author', :sort => 'priority'
+    assert_response :success
+  end
+
   def test_index_with_columns
     columns = ['tracker', 'subject', 'assigned_to']
     get :index, :set_filter => 1, :c => columns
@@ -296,6 +580,27 @@ class IssuesControllerTest < ActionController::TestCase
                                     :parent => { :tag => 'select', :attributes => { :id => "selected_columns" } }
   end
 
+  def test_index_without_project_should_implicitly_add_project_column_to_default_columns
+    Setting.issue_list_default_columns = ['tracker', 'subject', 'assigned_to']
+    get :index, :set_filter => 1
+
+    # query should use specified columns
+    query = assigns(:query)
+    assert_kind_of Query, query
+    assert_equal [:project, :tracker, :subject, :assigned_to], query.columns.map(&:name)
+  end
+
+  def test_index_without_project_and_explicit_default_columns_should_not_add_project_column
+    Setting.issue_list_default_columns = ['tracker', 'subject', 'assigned_to']
+    columns = ['tracker', 'subject', 'assigned_to']
+    get :index, :set_filter => 1, :c => columns
+
+    # query should use specified columns
+    query = assigns(:query)
+    assert_kind_of Query, query
+    assert_equal columns.map(&:to_sym), query.columns.map(&:name)
+  end
+
   def test_index_with_custom_field_column
     columns = %w(tracker subject cf_2)
     get :index, :set_filter => 1, :c => columns
@@ -311,10 +616,47 @@ class IssuesControllerTest < ActionController::TestCase
       :ancestor => {:tag => 'table', :attributes => {:class => /issues/}}
   end
 
+  def test_index_with_date_column
+    Issue.find(1).update_attribute :start_date, '1987-08-24'
+
+    with_settings :date_format => '%d/%m/%Y' do
+      get :index, :set_filter => 1, :c => %w(start_date)
+      assert_tag 'td', :attributes => {:class => /start_date/}, :content => '24/08/1987'
+    end
+  end
+
+  def test_index_with_done_ratio
+    Issue.find(1).update_attribute :done_ratio, 40
+
+    get :index, :set_filter => 1, :c => %w(done_ratio)
+    assert_tag 'td', :attributes => {:class => /done_ratio/},
+      :child => {:tag => 'table', :attributes => {:class => 'progress'},
+        :descendant => {:tag => 'td', :attributes => {:class => 'closed', :style => 'width: 40%;'}}
+      }
+  end
+
+  def test_index_with_fixed_version
+    get :index, :set_filter => 1, :c => %w(fixed_version)
+    assert_tag 'td', :attributes => {:class => /fixed_version/},
+      :child => {:tag => 'a', :content => '1.0', :attributes => {:href => '/versions/2'}}
+  end
+
+  def test_index_send_html_if_query_is_invalid
+    get :index, :f => ['start_date'], :op => {:start_date => '='}
+    assert_equal 'text/html', @response.content_type
+    assert_template 'index'
+  end
+
+  def test_index_send_nothing_if_query_is_invalid
+    get :index, :f => ['start_date'], :op => {:start_date => '='}, :format => 'csv'
+    assert_equal 'text/csv', @response.content_type
+    assert @response.body.blank?
+  end
+
   def test_show_by_anonymous
     get :show, :id => 1
     assert_response :success
-    assert_template 'show.rhtml'
+    assert_template 'show'
     assert_not_nil assigns(:issue)
     assert_equal Issue.find(1), assigns(:issue)
 
@@ -323,6 +665,8 @@ class IssuesControllerTest < ActionController::TestCase
                :descendant => { :tag => 'fieldset',
                                 :child => { :tag => 'legend',
                                             :content => /Notes/ } }
+    assert_tag :tag => 'title',
+      :content => "Bug #1: Can't print recipes - eCookbook - Redmine"
   end
 
   def test_show_by_manager
@@ -343,6 +687,28 @@ class IssuesControllerTest < ActionController::TestCase
                :descendant => { :tag => 'fieldset',
                                 :child => { :tag => 'legend',
                                             :content => /Notes/ } }
+  end
+
+  def test_update_form_should_not_display_inactive_enumerations
+    @request.session[:user_id] = 2
+    get :show, :id => 1
+    assert_response :success
+
+    assert ! IssuePriority.find(15).active?
+    assert_no_tag :option, :attributes => {:value => '15'},
+                           :parent => {:tag => 'select', :attributes => {:id => 'issue_priority_id'} }
+  end
+
+  def test_update_form_should_allow_attachment_upload
+    @request.session[:user_id] = 2
+    get :show, :id => 1
+
+    assert_tag :tag => 'form',
+      :attributes => {:id => 'issue-form', :method => 'post', :enctype => 'multipart/form-data'},
+      :descendant => {
+        :tag => 'input',
+        :attributes => {:type => 'file', :name => 'attachments[1][file]'}
+      }
   end
 
   def test_show_should_deny_anonymous_access_without_permission
@@ -425,7 +791,7 @@ class IssuesControllerTest < ActionController::TestCase
   def test_show_atom
     get :show, :id => 2, :format => 'atom'
     assert_response :success
-    assert_template 'journals/index.rxml'
+    assert_template 'journals/index'
     # Inline image
     assert_select 'content', :text => Regexp.new(Regexp.quote('http://test.host/attachments/download/10'))
   end
@@ -446,6 +812,47 @@ class IssuesControllerTest < ActionController::TestCase
 
     assert_tag :tag => 'input', :attributes => { :name => 'issue[custom_field_values][2]',
                                                  :value => 'Default string' }
+
+    # Be sure we don't display inactive IssuePriorities
+    assert ! IssuePriority.find(15).active?
+    assert_no_tag :option, :attributes => {:value => '15'},
+                           :parent => {:tag => 'select', :attributes => {:id => 'issue_priority_id'} }
+  end
+
+  def test_get_new_without_default_start_date_is_creation_date
+    Setting.default_issue_start_date_to_creation_date = 0
+
+    @request.session[:user_id] = 2
+    get :new, :project_id => 1, :tracker_id => 1
+    assert_response :success
+    assert_template 'new'
+
+    assert_tag :tag => 'input', :attributes => { :name => 'issue[start_date]',
+                                                 :value => nil }
+  end
+
+  def test_get_new_with_default_start_date_is_creation_date
+    Setting.default_issue_start_date_to_creation_date = 1
+
+    @request.session[:user_id] = 2
+    get :new, :project_id => 1, :tracker_id => 1
+    assert_response :success
+    assert_template 'new'
+
+    assert_tag :tag => 'input', :attributes => { :name => 'issue[start_date]',
+                                                 :value => Date.today.to_s }
+  end
+
+  def test_get_new_form_should_allow_attachment_upload
+    @request.session[:user_id] = 2
+    get :new, :project_id => 1, :tracker_id => 1
+
+    assert_tag :tag => 'form',
+      :attributes => {:id => 'issue-form', :method => 'post', :enctype => 'multipart/form-data'},
+      :descendant => {
+        :tag => 'input',
+        :attributes => {:type => 'file', :name => 'attachments[1][file]'}
+      }
   end
 
   def test_get_new_without_tracker_id
@@ -521,7 +928,31 @@ class IssuesControllerTest < ActionController::TestCase
     assert_equal 'Value for field 2', v.value
   end
 
-  def test_post_create_without_start_date
+  def test_post_new_with_group_assignment
+    group = Group.find(11)
+    project = Project.find(1)
+    project.members << Member.new(:principal => group, :roles => [Role.givable.first])
+
+    with_settings :issue_group_assignment => '1' do
+      @request.session[:user_id] = 2
+      assert_difference 'Issue.count' do
+        post :create, :project_id => project.id,
+                      :issue => {:tracker_id => 3,
+                                 :status_id => 1,
+                                 :subject => 'This is the test_new_with_group_assignment issue',
+                                 :assigned_to_id => group.id}
+      end
+    end
+    assert_redirected_to :controller => 'issues', :action => 'show', :id => Issue.last.id
+
+    issue = Issue.find_by_subject('This is the test_new_with_group_assignment issue')
+    assert_not_nil issue
+    assert_equal group, issue.assigned_to
+  end
+
+  def test_post_create_without_start_date_and_default_start_date_is_not_creation_date
+    Setting.default_issue_start_date_to_creation_date = 0
+
     @request.session[:user_id] = 2
     assert_difference 'Issue.count' do
       post :create, :project_id => 1,
@@ -530,7 +961,6 @@ class IssuesControllerTest < ActionController::TestCase
                             :subject => 'This is the test_new issue',
                             :description => 'This is the description',
                             :priority_id => 5,
-                            :start_date => '',
                             :estimated_hours => '',
                             :custom_field_values => {'2' => 'Value for field 2'}}
     end
@@ -541,15 +971,39 @@ class IssuesControllerTest < ActionController::TestCase
     assert_nil issue.start_date
   end
 
+  def test_post_create_without_start_date_and_default_start_date_is_creation_date
+    Setting.default_issue_start_date_to_creation_date = 1
+
+    @request.session[:user_id] = 2
+    assert_difference 'Issue.count' do
+      post :create, :project_id => 1,
+                 :issue => {:tracker_id => 3,
+                            :status_id => 2,
+                            :subject => 'This is the test_new issue',
+                            :description => 'This is the description',
+                            :priority_id => 5,
+                            :estimated_hours => '',
+                            :custom_field_values => {'2' => 'Value for field 2'}}
+    end
+    assert_redirected_to :controller => 'issues', :action => 'show', :id => Issue.last.id
+
+    issue = Issue.find_by_subject('This is the test_new issue')
+    assert_not_nil issue
+    assert_equal Date.today, issue.start_date
+  end
+
   def test_post_create_and_continue
     @request.session[:user_id] = 2
-    post :create, :project_id => 1,
-               :issue => {:tracker_id => 3,
-                          :subject => 'This is first issue',
-                          :priority_id => 5},
-               :continue => ''
-    assert_redirected_to :controller => 'issues', :action => 'new', :project_id => 'ecookbook',
-                         :issue => {:tracker_id => 3}
+    assert_difference 'Issue.count' do
+      post :create, :project_id => 1,
+        :issue => {:tracker_id => 3, :subject => 'This is first issue', :priority_id => 5},
+        :continue => ''
+    end
+
+    issue = Issue.first(:order => 'id DESC')
+    assert_redirected_to :controller => 'issues', :action => 'new', :project_id => 'ecookbook', :issue => {:tracker_id => 3}
+    assert_not_nil flash[:notice], "flash was not set"
+    assert flash[:notice].include?("<a href='/issues/#{issue.id}'>##{issue.id}</a>"), "issue link not found in flash: #{flash[:notice]}"
   end
 
   def test_post_create_without_custom_fields_param
@@ -633,7 +1087,7 @@ class IssuesControllerTest < ActionController::TestCase
     assert_not_nil issue
     assert_nil issue.parent
   end
-  
+
   def test_post_create_private
     @request.session[:user_id] = 2
 
@@ -646,12 +1100,12 @@ class IssuesControllerTest < ActionController::TestCase
     issue = Issue.first(:order => 'id DESC')
     assert issue.is_private?
   end
-  
+
   def test_post_create_private_with_set_own_issues_private_permission
     role = Role.find(1)
     role.remove_permission! :set_issues_private
     role.add_permission! :set_own_issues_private
-    
+
     @request.session[:user_id] = 2
 
     assert_difference 'Issue.count' do
@@ -713,6 +1167,31 @@ class IssuesControllerTest < ActionController::TestCase
     assert_nothing_raised do
       post :create, :project_id => 1, :issue => { :tracker => "A param can not be a Tracker" }
     end
+  end
+
+  def test_post_create_with_attachment
+    set_tmp_attachments_directory
+    @request.session[:user_id] = 2
+
+    assert_difference 'Issue.count' do
+      assert_difference 'Attachment.count' do
+        post :create, :project_id => 1,
+          :issue => { :tracker_id => '1', :subject => 'With attachment' },
+          :attachments => {'1' => {'file' => uploaded_test_file('testfile.txt', 'text/plain'), 'description' => 'test file'}}
+      end
+    end
+
+    issue = Issue.first(:order => 'id DESC')
+    attachment = Attachment.first(:order => 'id DESC')
+
+    assert_equal issue, attachment.container
+    assert_equal 2, attachment.author_id
+    assert_equal 'testfile.txt', attachment.filename
+    assert_equal 'text/plain', attachment.content_type
+    assert_equal 'test file', attachment.description
+    assert_equal 59, attachment.filesize
+    assert File.exists?(attachment.diskfile)
+    assert_equal 59, File.size(attachment.diskfile)
   end
 
   context "without workflow privilege" do
@@ -860,6 +1339,27 @@ class IssuesControllerTest < ActionController::TestCase
     assert_template 'edit'
     assert_not_nil assigns(:issue)
     assert_equal Issue.find(1), assigns(:issue)
+
+    # Be sure we don't display inactive IssuePriorities
+    assert ! IssuePriority.find(15).active?
+    assert_no_tag :option, :attributes => {:value => '15'},
+                           :parent => {:tag => 'select', :attributes => {:id => 'issue_priority_id'} }
+  end
+
+  def test_get_edit_should_display_the_time_entry_form_with_log_time_permission
+    @request.session[:user_id] = 2
+    Role.find_by_name('Manager').update_attribute :permissions, [:view_issues, :edit_issues, :log_time]
+    
+    get :edit, :id => 1
+    assert_tag 'input', :attributes => {:name => 'time_entry[hours]'}
+  end
+
+  def test_get_edit_should_not_display_the_time_entry_form_without_log_time_permission
+    @request.session[:user_id] = 2
+    Role.find_by_name('Manager').remove_permission! :log_time
+    
+    get :edit, :id => 1
+    assert_no_tag 'input', :attributes => {:name => 'time_entry[hours]'}
   end
 
   def test_get_edit_with_params
@@ -1047,16 +1547,28 @@ class IssuesControllerTest < ActionController::TestCase
     Journal.delete_all
 
     # anonymous user
-    put :update,
-         :id => 1,
-         :notes => '',
-         :attachments => {'1' => {'file' => uploaded_test_file('testfile.txt', 'text/plain')}}
+    assert_difference 'Attachment.count' do
+      put :update, :id => 1,
+        :notes => '',
+        :attachments => {'1' => {'file' => uploaded_test_file('testfile.txt', 'text/plain'), 'description' => 'test file'}}
+    end
+
     assert_redirected_to :action => 'show', :id => '1'
     j = Issue.find(1).journals.find(:first, :order => 'id DESC')
     assert j.notes.blank?
     assert_equal 1, j.details.size
     assert_equal 'testfile.txt', j.details.first.value
     assert_equal User.anonymous, j.user
+
+    attachment = Attachment.first(:order => 'id DESC')
+    assert_equal Issue.find(1), attachment.container
+    assert_equal User.anonymous, attachment.author
+    assert_equal 'testfile.txt', attachment.filename
+    assert_equal 'text/plain', attachment.content_type
+    assert_equal 'test file', attachment.description
+    assert_equal 59, attachment.filesize
+    assert File.exists?(attachment.diskfile)
+    assert_equal 59, File.size(attachment.diskfile)
 
     mail = ActionMailer::Base.deliveries.last
     assert mail.body.include?('testfile.txt')
@@ -1212,6 +1724,11 @@ class IssuesControllerTest < ActionController::TestCase
     # System wide custom field
     assert CustomField.find(1).is_for_all?
     assert_tag :select, :attributes => {:name => 'issue[custom_field_values][1]'}
+
+    # Be sure we don't display inactive IssuePriorities
+    assert ! IssuePriority.find(15).active?
+    assert_no_tag :option, :attributes => {:value => '15'},
+                           :parent => {:tag => 'select', :attributes => {:id => 'issue_priority_id'} }
   end
 
   def test_get_bulk_edit_on_different_projects
@@ -1258,7 +1775,7 @@ class IssuesControllerTest < ActionController::TestCase
       :attributes => {:name => "issue[custom_field_values][#{field.id}]"},
       :children => {
         :only => {:tag => 'option'},
-        :count => Project.find(1).versions.count + 1
+        :count => Project.find(1).shared_versions.count + 1
       }
   end
 
@@ -1279,6 +1796,22 @@ class IssuesControllerTest < ActionController::TestCase
     assert_equal '125', issue.custom_value_for(2).value
     assert_equal 'Bulk editing', journal.notes
     assert_equal 1, journal.details.size
+  end
+
+  def test_bulk_update_with_group_assignee
+    group = Group.find(11)
+    project = Project.find(1)
+    project.members << Member.new(:principal => group, :roles => [Role.givable.first])
+
+    @request.session[:user_id] = 2
+    # update issues assignee
+    post :bulk_update, :ids => [1, 2], :notes => 'Bulk editing',
+                                     :issue => {:priority_id => '',
+                                                :assigned_to_id => group.id,
+                                                :custom_field_values => {'2' => ''}}
+
+    assert_response 302
+    assert_equal [group, group], Issue.find_all_by_id([1, 2]).collect {|i| i.assigned_to}
   end
 
   def test_bulk_update_on_different_projects

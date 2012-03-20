@@ -24,6 +24,7 @@ class Attachment < ActiveRecord::Base
   validates_presence_of :container, :filename, :author
   validates_length_of :filename, :maximum => 255
   validates_length_of :disk_filename, :maximum => 255
+  validate :validate_max_file_size
 
   acts_as_event :title => :filename,
                 :url => Proc.new {|o| {:controller => 'attachments', :action => 'download', :id => o.id, :filename => o.filename}}
@@ -43,9 +44,12 @@ class Attachment < ActiveRecord::Base
                                                         "LEFT JOIN #{Project.table_name} ON #{Document.table_name}.project_id = #{Project.table_name}.id"}
 
   cattr_accessor :storage_path
-  @@storage_path = Redmine::Configuration['attachments_storage_path'] || "#{RAILS_ROOT}/files"
+  @@storage_path = Redmine::Configuration['attachments_storage_path'] || "#{Rails.root}/files"
 
-  def validate
+  before_save :files_to_final_location
+  after_destroy :delete_from_disk
+
+  def validate_max_file_size
     if self.filesize > Setting.attachment_max_size.to_i.kilobytes
       errors.add(:base, :too_long, :count => Setting.attachment_max_size.to_i.kilobytes)
     end
@@ -72,9 +76,9 @@ class Attachment < ActiveRecord::Base
 
   # Copies the temporary file to its final location
   # and computes its MD5 hash
-  def before_save
+  def files_to_final_location
     if @temp_file && (@temp_file.size > 0)
-      logger.debug("saving '#{self.diskfile}'")
+      logger.info("Saving attachment '#{self.diskfile}' (#{@temp_file.size} bytes)")
       md5 = Digest::MD5.new
       File.open(diskfile, "wb") do |f|
         buffer = ""
@@ -85,6 +89,7 @@ class Attachment < ActiveRecord::Base
       end
       self.digest = md5.hexdigest
     end
+    @temp_file = nil
     # Don't save the content type if it's longer than the authorized length
     if self.content_type && self.content_type.length > 255
       self.content_type = nil
@@ -92,7 +97,7 @@ class Attachment < ActiveRecord::Base
   end
 
   # Deletes file on the disk
-  def after_destroy
+  def delete_from_disk
     File.delete(diskfile) if !filename.blank? && File.exist?(diskfile)
   end
 
@@ -118,7 +123,7 @@ class Attachment < ActiveRecord::Base
   end
 
   def image?
-    self.filename =~ /\.(jpe?g|gif|png)$/i
+    self.filename =~ /\.(bmp|gif|jpg|jpe|jpeg|png)$/i
   end
 
   def is_text?
@@ -149,6 +154,7 @@ class Attachment < ActiveRecord::Base
                               :file => file,
                               :description => attachment['description'].to_s.strip,
                               :author => User.current)
+        obj.attachments << a
 
         if a.new_record?
           obj.unsaved_attachments ||= []
@@ -161,15 +167,19 @@ class Attachment < ActiveRecord::Base
     {:files => attached, :unsaved => obj.unsaved_attachments}
   end
 
+  def self.latest_attach(attachments, filename)
+    attachments.sort_by(&:created_on).reverse.detect { 
+      |att| att.filename.downcase == filename.downcase
+     }
+  end
+
 private
   def sanitize_filename(value)
     # get only the filename, not the whole path
     just_filename = value.gsub(/^.*(\\|\/)/, '')
-    # NOTE: File.basename doesn't work right with Windows paths on Unix
-    # INCORRECT: just_filename = File.basename(value.gsub('\\\\', '/'))
 
-    # Finally, replace all non alphanumeric, hyphens or periods with underscore
-    @filename = just_filename.gsub(/[^\w\.\-]/,'_')
+    # Finally, replace invalid characters with underscore
+    @filename = just_filename.gsub(/[\/\?\%\*\:\|\"\'<>]+/, '_')
   end
 
   # Returns an ASCII or hashed filename

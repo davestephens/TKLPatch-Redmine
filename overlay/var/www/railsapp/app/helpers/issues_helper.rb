@@ -1,3 +1,5 @@
+# encoding: utf-8
+#
 # Redmine - project management software
 # Copyright (C) 2006-2011  Jean-Philippe Lang
 #
@@ -46,13 +48,13 @@ module IssuesHelper
     @cached_label_priority ||= l(:field_priority)
     @cached_label_project ||= l(:field_project)
 
-    link_to_issue(issue) + "<br /><br />" +
+    (link_to_issue(issue) + "<br /><br />" +
       "<strong>#{@cached_label_project}</strong>: #{link_to_project(issue.project)}<br />" +
-      "<strong>#{@cached_label_status}</strong>: #{issue.status.name}<br />" +
+      "<strong>#{@cached_label_status}</strong>: #{h(issue.status.name)}<br />" +
       "<strong>#{@cached_label_start_date}</strong>: #{format_date(issue.start_date)}<br />" +
       "<strong>#{@cached_label_due_date}</strong>: #{format_date(issue.due_date)}<br />" +
-      "<strong>#{@cached_label_assigned_to}</strong>: #{issue.assigned_to}<br />" +
-      "<strong>#{@cached_label_priority}</strong>: #{issue.priority.name}"
+      "<strong>#{@cached_label_assigned_to}</strong>: #{h(issue.assigned_to)}<br />" +
+      "<strong>#{@cached_label_priority}</strong>: #{h(issue.priority.name)}").html_safe
   end
 
   def issue_heading(issue)
@@ -72,7 +74,7 @@ module IssuesHelper
     end
     s << content_tag('h3', subject)
     s << '</div>' * (ancestors.size + 1)
-    s
+    s.html_safe
   end
 
   def render_descendants_tree(issue)
@@ -87,7 +89,7 @@ module IssuesHelper
              :class => "issue issue-#{child.id} hascontextmenu #{level > 0 ? "idnt idnt-#{level}" : nil}")
     end
     s << '</form></table>'
-    s
+    s.html_safe
   end
 
   def render_custom_fields_rows(issue)
@@ -106,7 +108,7 @@ module IssuesHelper
       n += 1
     end
     s << "</tr>\n"
-    s
+    s.html_safe
   end
 
   def issues_destroy_confirmation_message(issues)
@@ -145,7 +147,7 @@ module IssuesHelper
     # links to #index on issues/show
     url_params = controller_name == 'issues' ? {:controller => 'issues', :action => 'index', :project_id => @project} : params
 
-    content_tag('h3', title) +
+    content_tag('h3', h(title)) +
       queries.collect {|query|
           link_to(h(query.name), url_params.merge(:query_id => query))
         }.join('<br />')
@@ -206,7 +208,7 @@ module IssuesHelper
     unless no_html
       label = content_tag('strong', label)
       old_value = content_tag("i", h(old_value)) if detail.old_value
-      old_value = content_tag("strike", old_value) if detail.old_value and (!detail.value or detail.value.empty?)
+      old_value = content_tag("strike", old_value) if detail.old_value and detail.value.blank?
       if detail.property == 'attachment' && !value.blank? && a = Attachment.find_by_id(detail.prop_key)
         # Link to the attachment if it has not been removed
         value = link_to_attachment(a)
@@ -263,59 +265,38 @@ module IssuesHelper
     end
   end
 
-  def issues_to_csv(issues, project = nil)
-    ic = Iconv.new(l(:general_csv_encoding), 'UTF-8')
+  def issues_to_csv(issues, project, query, options={})
     decimal_separator = l(:general_csv_decimal_separator)
+    encoding = l(:general_csv_encoding)
+    columns = (options[:columns] == 'all' ? query.available_columns : query.columns)
+
     export = FCSV.generate(:col_sep => l(:general_csv_separator)) do |csv|
       # csv header fields
-      headers = [ "#",
-                  l(:field_status),
-                  l(:field_project),
-                  l(:field_tracker),
-                  l(:field_priority),
-                  l(:field_subject),
-                  l(:field_assigned_to),
-                  l(:field_category),
-                  l(:field_fixed_version),
-                  l(:field_author),
-                  l(:field_start_date),
-                  l(:field_due_date),
-                  l(:field_done_ratio),
-                  l(:field_estimated_hours),
-                  l(:field_parent_issue),
-                  l(:field_created_on),
-                  l(:field_updated_on)
-                  ]
-      # Export project custom fields if project is given
-      # otherwise export custom fields marked as "For all projects"
-      custom_fields = project.nil? ? IssueCustomField.for_all : project.all_issue_custom_fields
-      custom_fields.each {|f| headers << f.name}
-      # Description in the last column
-      headers << l(:field_description)
-      csv << headers.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
+      csv << [ "#" ] + columns.collect {|c| Redmine::CodesetUtil.from_utf8(c.caption.to_s, encoding) } +
+        (options[:description] ? [Redmine::CodesetUtil.from_utf8(l(:field_description), encoding)] : [])
+
       # csv lines
       issues.each do |issue|
-        fields = [issue.id,
-                  issue.status.name,
-                  issue.project.name,
-                  issue.tracker.name,
-                  issue.priority.name,
-                  issue.subject,
-                  issue.assigned_to,
-                  issue.category,
-                  issue.fixed_version,
-                  issue.author.name,
-                  format_date(issue.start_date),
-                  format_date(issue.due_date),
-                  issue.done_ratio,
-                  issue.estimated_hours.to_s.gsub('.', decimal_separator),
-                  issue.parent_id,
-                  format_time(issue.created_on),
-                  format_time(issue.updated_on)
-                  ]
-        custom_fields.each {|f| fields << show_value(issue.custom_value_for(f)) }
-        fields << issue.description
-        csv << fields.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
+        col_values = columns.collect do |column|
+          s = if column.is_a?(QueryCustomFieldColumn)
+            cv = issue.custom_values.detect {|v| v.custom_field_id == column.custom_field.id}
+            show_value(cv)
+          else
+            value = issue.send(column.name)
+            if value.is_a?(Date)
+              format_date(value)
+            elsif value.is_a?(Time)
+              format_time(value)
+            elsif value.is_a?(Float)
+              value.to_s.gsub('.', decimal_separator)
+            else
+              value
+            end
+          end
+          s.to_s
+        end
+        csv << [ issue.id.to_s ] + col_values.collect {|c| Redmine::CodesetUtil.from_utf8(c.to_s, encoding) } +
+          (options[:description] ? [Redmine::CodesetUtil.from_utf8(issue.description, encoding)] : [])
       end
     end
     export
