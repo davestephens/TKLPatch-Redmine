@@ -2,8 +2,8 @@
 
 # update rails/rack to correct versions
 cd /var/www/railsapp
-gem install rails -v=2.3.14
-gem install rack -v=1.1.0
+gem install rails -v=2.3.14 --no-ri --no-rdoc
+gem install rack -v=1.1.0 --no-ri --no-rdoc
 
 # do the stuff in the redmine upgrade doc
 rake config/initializers/session_store.rb
