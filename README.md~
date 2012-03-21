@@ -1,7 +1,7 @@
 Turnkey Linux Redmine v1.3.2 TKLPatch
 =====================================
 
-This is a TKLPatch for the [Turnkey Linux Redmine VM](http://www.turnkeylinux.org/redmine). It updates the VM from the ancient version of Redmine that it was originally built with to the latest, which at the time of writing is v1.3.2.
+This is a TKLPatch for the [Turnkey Linux Redmine VM](http://www.turnkeylinux.org/redmine). It updates the VM from the ancient version that it was originally built with to the latest, which at the time of writing is v1.3.2.
 
 Applying the TKLPatch
 ---------------------
