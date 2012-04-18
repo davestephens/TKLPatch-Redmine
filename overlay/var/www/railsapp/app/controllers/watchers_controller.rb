@@ -20,10 +20,6 @@ class WatchersController < ApplicationController
   before_filter :require_login, :check_project_privacy, :only => [:watch, :unwatch]
   before_filter :authorize, :only => [:new, :destroy]
 
-  verify :method => :post,
-         :only => [ :watch, :unwatch ],
-         :render => { :nothing => true, :status => :method_not_allowed }
-
   def watch
     if @watched.respond_to?(:visible?) && !@watched.visible?(User.current)
       render_403
@@ -37,19 +33,54 @@ class WatchersController < ApplicationController
   end
 
   def new
-    @watcher = Watcher.new(params[:watcher])
-    @watcher.watchable = @watched
-    @watcher.save if request.post?
+    respond_to do |format|
+      format.js do
+        render :update do |page|
+          page.replace_html 'ajax-modal', :partial => 'watchers/new', :locals => {:watched => @watched}
+          page << "showModal('ajax-modal', '400px');"
+          page << "$('ajax-modal').addClassName('new-watcher');"
+        end
+      end
+    end
+  end
+
+  def create
+    if params[:watcher].is_a?(Hash) && request.post?
+      user_ids = params[:watcher][:user_ids] || [params[:watcher][:user_id]]
+      user_ids.each do |user_id|
+        Watcher.create(:watchable => @watched, :user_id => user_id)
+      end
+    end
     respond_to do |format|
       format.html { redirect_to :back }
       format.js do
         render :update do |page|
+          page.replace_html 'ajax-modal', :partial => 'watchers/new', :locals => {:watched => @watched}
           page.replace_html 'watchers', :partial => 'watchers/watchers', :locals => {:watched => @watched}
         end
       end
     end
   rescue ::ActionController::RedirectBackError
     render :text => 'Watcher added.', :layout => true
+  end
+
+  def append
+    if params[:watcher].is_a?(Hash)
+      user_ids = params[:watcher][:user_ids] || [params[:watcher][:user_id]]
+      users = User.active.find_all_by_id(user_ids)
+      respond_to do |format|
+        format.js do
+          render :update do |page|
+            users.each do |user|
+              page.select("#issue_watcher_user_ids_#{user.id}").each do |item|
+                page.remove item
+              end
+            end
+            page.insert_html :bottom, 'watchers_inputs', :text => watchers_checkboxes(nil, users, true)
+          end
+        end
+      end
+    end
   end
 
   def destroy
@@ -64,12 +95,24 @@ class WatchersController < ApplicationController
     end
   end
 
+  def autocomplete_for_user
+    @users = User.active.like(params[:q]).find(:all, :limit => 100)
+    if @watched
+      @users -= @watched.watcher_users
+    end
+    render :layout => false
+  end
+
 private
   def find_project
-    klass = Object.const_get(params[:object_type].camelcase)
-    return false unless klass.respond_to?('watched_by')
-    @watched = klass.find(params[:object_id])
-    @project = @watched.project
+    if params[:object_type] && params[:object_id]
+      klass = Object.const_get(params[:object_type].camelcase)
+      return false unless klass.respond_to?('watched_by')
+      @watched = klass.find(params[:object_id])
+      @project = @watched.project
+    elsif params[:project_id]
+      @project = Project.visible.find(params[:project_id])
+    end
   rescue
     render_404
   end

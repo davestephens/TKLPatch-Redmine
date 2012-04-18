@@ -1,20 +1,20 @@
-/* redMine - project management software
-   Copyright (C) 2006-2008  Jean-Philippe Lang */
+/* Redmine - project management software
+   Copyright (C) 2006-2012  Jean-Philippe Lang */
 
 function checkAll (id, checked) {
-	var els = Element.descendants(id);
-	for (var i = 0; i < els.length; i++) {
+  var els = Element.descendants(id);
+  for (var i = 0; i < els.length; i++) {
     if (els[i].disabled==false) {
       els[i].checked = checked;
     }
-	}
+  }
 }
 
 function toggleCheckboxesBySelector(selector) {
-	boxes = $$(selector);
-	var all_checked = true;
-	for (i = 0; i < boxes.length; i++) { if (boxes[i].checked == false) { all_checked = false; } }
-	for (i = 0; i < boxes.length; i++) { boxes[i].checked = !all_checked; }
+  boxes = $$(selector);
+  var all_checked = true;
+  for (i = 0; i < boxes.length; i++) { if (boxes[i].checked == false) { all_checked = false; } }
+  for (i = 0; i < boxes.length; i++) { boxes[i].checked = !all_checked; }
 }
 
 function setCheckboxesBySelector(checked, selector) {
@@ -25,19 +25,19 @@ function setCheckboxesBySelector(checked, selector) {
 }
 
 function showAndScrollTo(id, focus) {
-	Element.show(id);
-	if (focus!=null) { Form.Element.focus(focus); }
-	Element.scrollTo(id);
+  Element.show(id);
+  if (focus!=null) { Form.Element.focus(focus); }
+  Element.scrollTo(id);
 }
 
 function toggleRowGroup(el) {
-	var tr = Element.up(el, 'tr');
-	var n = Element.next(tr);
-	tr.toggleClassName('open');
-	while (n != undefined && !n.hasClassName('group')) {
-		Element.toggle(n);
-		n = Element.next(n);
-	}
+  var tr = Element.up(el, 'tr');
+  var n = Element.next(tr);
+  tr.toggleClassName('open');
+  while (n != undefined && !n.hasClassName('group')) {
+    Element.toggle(n);
+    n = Element.next(n);
+  }
 }
 
 function collapseAllRowGroups(el) {
@@ -63,7 +63,7 @@ function expandAllRowGroups(el) {
 }
 
 function toggleAllRowGroups(el) {
-	var tr = Element.up(el, 'tr');
+  var tr = Element.up(el, 'tr');
   if (tr.hasClassName('open')) {
     collapseAllRowGroups(el);
   } else {
@@ -72,15 +72,113 @@ function toggleAllRowGroups(el) {
 }
 
 function toggleFieldset(el) {
-	var fieldset = Element.up(el, 'fieldset');
-	fieldset.toggleClassName('collapsed');
-	Effect.toggle(fieldset.down('div'), 'slide', {duration:0.2});
+  var fieldset = Element.up(el, 'fieldset');
+  fieldset.toggleClassName('collapsed');
+  Effect.toggle(fieldset.down('div'), 'slide', {duration:0.2});
 }
 
 function hideFieldset(el) {
-	var fieldset = Element.up(el, 'fieldset');
-	fieldset.toggleClassName('collapsed');
-	fieldset.down('div').hide();
+  var fieldset = Element.up(el, 'fieldset');
+  fieldset.toggleClassName('collapsed');
+  fieldset.down('div').hide();
+}
+
+function add_filter() {
+  select = $('add_filter_select');
+  field = select.value
+  Element.show('tr_' +  field);
+  check_box = $('cb_' + field);
+  check_box.checked = true;
+  toggle_filter(field);
+  select.selectedIndex = 0;
+
+  for (i=0; i<select.options.length; i++) {
+    if (select.options[i].value == field) {
+      select.options[i].disabled = true;
+    }
+  }
+}
+
+function toggle_filter(field) {
+  check_box = $('cb_' + field);
+  if (check_box.checked) {
+    Element.show("operators_" + field);
+    Form.Element.enable("operators_" + field);
+    toggle_operator(field);
+  } else {
+    Element.hide("operators_" + field);
+    Form.Element.disable("operators_" + field);
+    enableValues(field, []);
+  }
+}
+
+function enableValues(field, indexes) {
+  var f = $$(".values_" + field);
+  for(var i=0;i<f.length;i++) {
+    if (indexes.include(i)) {
+      Form.Element.enable(f[i]);
+      f[i].up('span').show();
+    } else {
+      f[i].value = '';
+      Form.Element.disable(f[i]);
+      f[i].up('span').hide();
+    }
+  }
+  if (indexes.length > 0) {
+    Element.show("div_values_" + field);
+  } else {
+    Element.hide("div_values_" + field);
+  }
+}
+
+function toggle_operator(field) {
+  operator = $("operators_" + field);
+  switch (operator.value) {
+    case "!*":
+    case "*":
+    case "t":
+    case "w":
+    case "o":
+    case "c":
+      enableValues(field, []);
+      break;
+    case "><":
+      enableValues(field, [0,1]);
+      break;
+    case "<t+":
+    case ">t+":
+    case "t+":
+    case ">t-":
+    case "<t-":
+    case "t-":
+      enableValues(field, [2]);
+      break;
+    default:
+      enableValues(field, [0]);
+      break;
+  }
+}
+
+function toggle_multi_select(el) {
+  var select = $(el);
+  if (select.multiple == true) {
+    select.multiple = false;
+  } else {
+    select.multiple = true;
+  }
+}
+
+function submit_query_form(id) {
+  selectAllOptions("selected_columns");
+  $(id).submit();
+}
+
+function apply_filters_observer() {
+  $$("#query_form input[type=text]").invoke("observe", "keypress", function(e){
+    if(e.keyCode == Event.KEY_RETURN) {
+      submit_query_form("query_form");
+    }
+  });
 }
 
 var fileFieldCount = 1;
@@ -98,12 +196,12 @@ function addFileField() {
 
 function removeFileField(el) {
   var fields = $('attachments_fields');
-	var s = Element.up(el, 'span');
-	if (fields.childElements().length > 1) {
-		s.remove();
-	} else {
-		s.update(s.innerHTML);
-	}
+  var s = Element.up(el, 'span');
+  if (fields.childElements().length > 1) {
+    s.remove();
+  } else {
+    s.update(s.innerHTML);
+  }
 }
 
 function checkFileSize(el, maxSize, message) {
@@ -119,66 +217,66 @@ function checkFileSize(el, maxSize, message) {
 }
 
 function showTab(name) {
-    var f = $$('div#content .tab-content');
-	for(var i=0; i<f.length; i++){
-		Element.hide(f[i]);
-	}
-    var f = $$('div.tabs a');
-	for(var i=0; i<f.length; i++){
-		Element.removeClassName(f[i], "selected");
-	}
-	Element.show('tab-content-' + name);
-	Element.addClassName('tab-' + name, "selected");
-	return false;
+  var f = $$('div#content .tab-content');
+  for(var i=0; i<f.length; i++){
+    Element.hide(f[i]);
+  }
+  var f = $$('div.tabs a');
+  for(var i=0; i<f.length; i++){
+    Element.removeClassName(f[i], "selected");
+  }
+  Element.show('tab-content-' + name);
+  Element.addClassName('tab-' + name, "selected");
+  return false;
 }
 
 function moveTabRight(el) {
-	var lis = Element.up(el, 'div.tabs').down('ul').childElements();
-	var tabsWidth = 0;
-	var i;
-	for (i=0; i<lis.length; i++) {
-		if (lis[i].visible()) {
-			tabsWidth += lis[i].getWidth() + 6;
-		}
-	}
-	if (tabsWidth < Element.up(el, 'div.tabs').getWidth() - 60) {
-		return;
-	}
-	i=0;
-	while (i<lis.length && !lis[i].visible()) {
-		i++;
-	}
-	lis[i].hide();
+  var lis = Element.up(el, 'div.tabs').down('ul').childElements();
+  var tabsWidth = 0;
+  var i;
+  for (i=0; i<lis.length; i++) {
+    if (lis[i].visible()) {
+      tabsWidth += lis[i].getWidth() + 6;
+    }
+  }
+  if (tabsWidth < Element.up(el, 'div.tabs').getWidth() - 60) {
+    return;
+  }
+  i=0;
+  while (i<lis.length && !lis[i].visible()) {
+    i++;
+  }
+  lis[i].hide();
 }
 
 function moveTabLeft(el) {
-	var lis = Element.up(el, 'div.tabs').down('ul').childElements();
-	var i = 0;
-	while (i<lis.length && !lis[i].visible()) {
-		i++;
-	}
-	if (i>0) {
-		lis[i-1].show();
-	}
+  var lis = Element.up(el, 'div.tabs').down('ul').childElements();
+  var i = 0;
+  while (i<lis.length && !lis[i].visible()) {
+    i++;
+  }
+  if (i>0) {
+    lis[i-1].show();
+  }
 }
 
 function displayTabsButtons() {
-	var lis;
-	var tabsWidth = 0;
-	var i;
-	$$('div.tabs').each(function(el) {
-		lis = el.down('ul').childElements();
-		for (i=0; i<lis.length; i++) {
-			if (lis[i].visible()) {
-				tabsWidth += lis[i].getWidth() + 6;
-			}
-		}
-		if ((tabsWidth < el.getWidth() - 60) && (lis[0].visible())) {
-			el.down('div.tabs-buttons').hide();
-		} else {
-			el.down('div.tabs-buttons').show();
-		}
-	});
+  var lis;
+  var tabsWidth = 0;
+  var i;
+  $$('div.tabs').each(function(el) {
+    lis = el.down('ul').childElements();
+    for (i=0; i<lis.length; i++) {
+      if (lis[i].visible()) {
+        tabsWidth += lis[i].getWidth() + 6;
+      }
+    }
+    if ((tabsWidth < el.getWidth() - 60) && (lis[0].visible())) {
+      el.down('div.tabs-buttons').hide();
+    } else {
+      el.down('div.tabs-buttons').show();
+    }
+  });
 }
 
 function setPredecessorFieldsVisibility() {
@@ -200,7 +298,7 @@ function promptToRemote(text, param, url) {
 
 function showModal(id, width) {
   el = $(id);
-	if (el == undefined || el.visible()) {return;}
+  if (el == undefined || el.visible()) {return;}
   var h = $$('body')[0].getHeight();
   var d = document.createElement("div");
   d.id = 'modalbg';
@@ -209,42 +307,50 @@ function showModal(id, width) {
   $('modalbg').show();
 
   var pageWidth = document.viewport.getWidth();
-	el.setStyle({'width': width});
-	el.setStyle({'left': (((pageWidth - el.getWidth())/2  *100) / pageWidth) + '%'});
-  el.addClassName('modal');
-	el.show();
-
-  var submit = el.down("input[type=submit]");
-	if (submit) {
-  	submit.focus();
+  if (width) {
+    el.setStyle({'width': width});
   }
+  el.setStyle({'left': (((pageWidth - el.getWidth())/2  *100) / pageWidth) + '%'});
+  el.addClassName('modal');
+  el.show();
+
+  if (el.down("input[type=text]")) {
+    el.down("input[type=text]").focus();
+  } else if (el.down("input[type=submit]")) {
+    el.down("input[type=submit]").focus();
+	} 
 }
 
 function hideModal(el) {
-  var modal = Element.up(el, 'div.modal');
-	if (modal) {
-		modal.hide();
+  var modal;
+	if (el) {
+		modal = Element.up(el, 'div.modal');
+	} else {
+		modal = $('ajax-modal');
 	}
-	var bg = $('modalbg');
-	if (bg) {
-  	bg.remove();
+  if (modal) {
+    modal.hide();
+  }
+  var bg = $('modalbg');
+  if (bg) {
+    bg.remove();
   }
 }
 
 function collapseScmEntry(id) {
-    var els = document.getElementsByClassName(id, 'browser');
-	for (var i = 0; i < els.length; i++) {
-	   if (els[i].hasClassName('open')) {
-	       collapseScmEntry(els[i].id);
-	   }
-       Element.hide(els[i]);
-    }
-    $(id).removeClassName('open');
+  var els = document.getElementsByClassName(id, 'browser');
+  for (var i = 0; i < els.length; i++) {
+     if (els[i].hasClassName('open')) {
+         collapseScmEntry(els[i].id);
+     }
+     Element.hide(els[i]);
+  }
+  $(id).removeClassName('open');
 }
 
 function expandScmEntry(id) {
     var els = document.getElementsByClassName(id, 'browser');
-	for (var i = 0; i < els.length; i++) {
+    for (var i = 0; i < els.length; i++) {
        Element.show(els[i]);
        if (els[i].hasClassName('loaded') && !els[i].hasClassName('collapsed')) {
             expandScmEntry(els[i].id);
@@ -278,12 +384,12 @@ function scmEntryLoaded(id) {
 }
 
 function randomKey(size) {
-	var chars = new Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z');
-	var key = '';
-	for (i = 0; i < size; i++) {
-  	key += chars[Math.floor(Math.random() * chars.length)];
-	}
-	return key;
+  var chars = new Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z');
+  var key = '';
+  for (i = 0; i < size; i++) {
+    key += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return key;
 }
 
 function observeParentIssueField(url) {
@@ -326,7 +432,7 @@ function observeProjectModules() {
     setVisible('project_trackers', c);
     setVisible('project_issue_custom_fields', c);
   };
-  
+
   Event.observe(window, 'load', f);
   Event.observe('project_enabled_module_names_issue_tracking', 'change', f);
 }
@@ -337,48 +443,48 @@ function observeProjectModules() {
 */
 
 var WarnLeavingUnsaved = Class.create({
-	observedForms: false,
-	observedElements: false,
-	changedForms: false,
-	message: null,
-	
-	initialize: function(message){
-		this.observedForms = $$('form');
-		this.observedElements =  $$('textarea');
-		this.message = message;
-		
-		this.observedElements.each(this.observeChange.bind(this));
-		this.observedForms.each(this.submitAction.bind(this));
-		
-		window.onbeforeunload = this.unload.bind(this);
-	},
-	
-	unload: function(){
-		this.observedElements.each(function(el) {el.blur();})
-		if(this.changedForms)
+  observedForms: false,
+  observedElements: false,
+  changedForms: false,
+  message: null,
+
+  initialize: function(message){
+    this.observedForms = $$('form');
+    this.observedElements =  $$('textarea');
+    this.message = message;
+
+    this.observedElements.each(this.observeChange.bind(this));
+    this.observedForms.each(this.submitAction.bind(this));
+
+    window.onbeforeunload = this.unload.bind(this);
+  },
+
+  unload: function(){
+    this.observedElements.each(function(el) {el.blur();})
+    if(this.changedForms)
       return this.message;
-	},
-	
-	setChanged: function(){
+  },
+
+  setChanged: function(){
     this.changedForms = true;
-	},
-	
-	setUnchanged: function(){
+  },
+
+  setUnchanged: function(){
     this.changedForms = false;
-	},
-	
-	observeChange: function(element){
+  },
+
+  observeChange: function(element){
     element.observe('change',this.setChanged.bindAsEventListener(this));
-	},
-	
-	submitAction: function(element){
+  },
+
+  submitAction: function(element){
     element.observe('submit',this.setUnchanged.bindAsEventListener(this));
-	}
+  }
 });
 
-/* 
+/*
  * 1 - registers a callback which copies the csrf token into the
- * X-CSRF-Token header with each ajax request.  Necessary to 
+ * X-CSRF-Token header with each ajax request.  Necessary to
  * work with rails applications which have fixed
  * CVE-2011-0447
  * 2 - shows and hides ajax indicator
@@ -397,7 +503,7 @@ Ajax.Responders.register({
             request.options.requestHeaders[header] = token;
           }
 
-        if ($('ajax-indicator') && Ajax.activeRequestCount > 0) {
+        if ($('ajax-indicator') && Ajax.activeRequestCount > 0 && $$('input.ajax-loading').size() == 0) {
             Element.show('ajax-indicator');
         }
     },
@@ -410,8 +516,20 @@ Ajax.Responders.register({
 
 function hideOnLoad() {
   $$('.hol').each(function(el) {
-  	el.hide();
-	});
+    el.hide();
+  });
+}
+
+function addFormObserversForDoubleSubmit() {
+  $$('form[method=post]').each(function(el) {
+    Event.observe(el, 'submit', function(e) {
+      var form = Event.element(e);
+      form.select('input[type=submit]').each(function(btn) {
+        btn.disable();
+      });
+    });
+  });
 }
 
 Event.observe(window, 'load', hideOnLoad);
+Event.observe(window, 'load', addFormObserversForDoubleSubmit);

@@ -579,7 +579,6 @@ it:
   text_tip_issue_begin_day: attività che iniziano in questa giornata
   text_tip_issue_end_day: attività che terminano in questa giornata
   text_tip_issue_begin_end_day: attività che iniziano e terminano in questa giornata
-  text_project_identifier_info: "Lettere minuscole (a-z), numeri e trattini permessi.<br />Una volta salvato, l'identificativo non può essere modificato."
   text_caracters_maximum: "massimo %{count} caratteri."
   text_length_between: "Lunghezza compresa tra %{min} e %{max} caratteri."
   text_tracker_no_workflow: Nessun workflow definito per questo tracker
@@ -1007,3 +1006,23 @@ it:
   button_export: Esporta
   label_export_options: "%{export_format} opzioni per l'export"
   error_attachment_too_big: Questo file non può essere caricato in quanto la sua dimensione supera la massima consentita (%{max_size})
+  notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
+  label_x_issues:
+    zero:  0 segnalazione
+    one:   1 segnalazione
+    other: "%{count} segnalazioni"
+  label_repository_new: New repository
+  field_repository_is_default: Main repository
+  label_copy_attachments: Copy attachments
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: Completed versions
+  text_project_identifier_info: Only lower case letters (a-z), numbers, dashes and underscores are allowed.<br />Once saved, the identifier cannot be changed.
+  field_multiple: Multiple values
+  setting_commit_cross_project_ref: Allow issues of all the other projects to be referenced and fixed
+  text_issue_conflict_resolution_add_notes: Add my notes and discard my other changes
+  text_issue_conflict_resolution_overwrite: Apply my changes anyway (previous notes will be kept but some changes may be overwritten)
+  notice_issue_update_conflict: The issue has been updated by an other user while you were editing it.
+  text_issue_conflict_resolution_cancel: Discard all my changes and redisplay %{link}
+  permission_manage_related_issues: Manage related issues
+  field_ldap_filter: LDAP filter
+  label_search_for_watchers: Search for watchers to add

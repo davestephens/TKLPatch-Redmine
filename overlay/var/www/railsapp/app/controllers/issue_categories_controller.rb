@@ -20,7 +20,7 @@ class IssueCategoriesController < ApplicationController
   model_object IssueCategory
   before_filter :find_model_object, :except => [:index, :new, :create]
   before_filter :find_project_from_association, :except => [:index, :new, :create]
-  before_filter :find_project, :only => [:index, :new, :create]
+  before_filter :find_project_by_project_id, :only => [:index, :new, :create]
   before_filter :authorize
   accept_api_auth :index, :show, :create, :update, :destroy
   
@@ -43,7 +43,6 @@ class IssueCategoriesController < ApplicationController
     @category.safe_attributes = params[:issue_category]
   end
 
-  verify :method => :post, :only => :create
   def create
     @category = @project.issue_categories.build
     @category.safe_attributes = params[:issue_category]
@@ -56,7 +55,7 @@ class IssueCategoriesController < ApplicationController
         format.js do
           # IE doesn't support the replace_html rjs method for select box options
           render(:update) {|page| page.replace "issue_category_id",
-            content_tag('select', '<option></option>' + options_from_collection_for_select(@project.issue_categories, 'id', 'name', @category.id), :id => 'issue_category_id', :name => 'issue[category_id]')
+            content_tag('select', content_tag('option') + options_from_collection_for_select(@project.issue_categories, 'id', 'name', @category.id), :id => 'issue_category_id', :name => 'issue[category_id]')
           }
         end
         format.api { render :action => 'show', :status => :created, :location => issue_category_path(@category) }
@@ -75,7 +74,6 @@ class IssueCategoriesController < ApplicationController
   def edit
   end
 
-  verify :method => :put, :only => :update
   def update
     @category.safe_attributes = params[:issue_category]
     if @category.save
@@ -94,7 +92,6 @@ class IssueCategoriesController < ApplicationController
     end
   end
 
-  verify :method => :delete, :only => :destroy
   def destroy
     @issue_count = @category.issues.size
     if @issue_count == 0 || params[:todo] || api_request? 
@@ -118,11 +115,5 @@ private
   def find_model_object
     super
     @category = @object
-  end
-
-  def find_project
-    @project = Project.find(params[:project_id])
-  rescue ActiveRecord::RecordNotFound
-    render_404
   end
 end

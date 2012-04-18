@@ -46,10 +46,30 @@ class TimeEntry < ActiveRecord::Base
     :include => :project,
     :conditions => Project.allowed_to_condition(args.shift || User.current, :view_time_entries, *args)
   }}
+  named_scope :on_issue, lambda {|issue| {
+    :include => :issue,
+    :conditions => "#{Issue.table_name}.root_id = #{issue.root_id} AND #{Issue.table_name}.lft >= #{issue.lft} AND #{Issue.table_name}.rgt <= #{issue.rgt}"
+  }}
+  named_scope :on_project, lambda {|project, include_subprojects| {
+    :include => :project,
+    :conditions => project.project_condition(include_subprojects)
+  }}
+  named_scope :spent_between, lambda {|from, to|
+    if from && to
+     {:conditions => ["#{TimeEntry.table_name}.spent_on BETWEEN ? AND ?", from, to]}
+    elsif from
+     {:conditions => ["#{TimeEntry.table_name}.spent_on >= ?", from]}
+    elsif to
+     {:conditions => ["#{TimeEntry.table_name}.spent_on <= ?", to]}
+    else
+     {}
+    end
+  }
 
   safe_attributes 'hours', 'comments', 'issue_id', 'activity_id', 'spent_on', 'custom_field_values'
 
-  def after_initialize
+  def initialize(attributes=nil, *args)
+    super
     if new_record? && self.activity.nil?
       if default_activity = TimeEntryActivity.default
         self.activity_id = default_activity.id
@@ -72,6 +92,15 @@ class TimeEntry < ActiveRecord::Base
     write_attribute :hours, (h.is_a?(String) ? (h.to_hours || h) : h)
   end
 
+  def hours
+    h = read_attribute(:hours)
+    if h.is_a?(Float)
+      h.round(2)
+    else
+      h
+    end
+  end
+
   # tyear, tmonth, tweek assigned where setting spent_on attributes
   # these attributes make time aggregations easier
   def spent_on=(date)
@@ -87,21 +116,5 @@ class TimeEntry < ActiveRecord::Base
   # Returns true if the time entry can be edited by usr, otherwise false
   def editable_by?(usr)
     (usr == user && usr.allowed_to?(:edit_own_time_entries, project)) || usr.allowed_to?(:edit_time_entries, project)
-  end
-
-  def self.earilest_date_for_project(project=nil)
-    finder_conditions = ARCondition.new(Project.allowed_to_condition(User.current, :view_time_entries))
-    if project
-      finder_conditions << ["project_id IN (?)", project.hierarchy.collect(&:id)]
-    end
-    TimeEntry.minimum(:spent_on, :include => :project, :conditions => finder_conditions.conditions)
-  end
-
-  def self.latest_date_for_project(project=nil)
-    finder_conditions = ARCondition.new(Project.allowed_to_condition(User.current, :view_time_entries))
-    if project
-      finder_conditions << ["project_id IN (?)", project.hierarchy.collect(&:id)]
-    end
-    TimeEntry.maximum(:spent_on, :include => :project, :conditions => finder_conditions.conditions)
   end
 end

@@ -50,7 +50,7 @@ h4, .wiki h3 {font-size: 13px;padding: 2px 10px 1px 0px;margin-bottom: 5px; bord
 #main-menu li a.selected, #main-menu li a.selected:hover {background:#fff; color:#555;}
 
 #admin-menu ul {margin: 0;  padding: 0;}
-#admin-menu li {margin: 0;  padding: 0 0 12px 0; list-style-type:none;}
+#admin-menu li {margin: 0;  padding: 0 0 6px 0; list-style-type:none;}
 
 #admin-menu a { background-position: 0% 40%; background-repeat: no-repeat; padding-left: 20px; padding-top: 2px; padding-bottom: 3px;}
 #admin-menu a.projects { background-image: url(../images/projects.png); }
@@ -93,7 +93,7 @@ html>body #content { min-height: 600px; }
 
 #modalbg {position:absolute; top:0; left:0; width:100%; height:100%; background:#ccc; z-index:49; opacity:0.5;}
 html>body #modalbg {position:fixed;}
-div.modal { border-radius:5px; position:absolute; top:25%; background:#fff; border:2px solid #759FCF; z-index:50; padding:0px; padding:8px;}
+div.modal { border-radius:5px; position:absolute; top:25%; background:#fff; border:2px solid #759FCF; z-index:50; padding:0px; padding:8px; box-shadow: 1px 1px 8px #888; }
 div.modal h3.title {background:#759FCF; color:#fff; border:0; padding-left:8px; margin:-8px; margin-bottom: 1em; border-top-left-radius:2px;border-top-right-radius:2px;}
 div.modal p.buttons {text-align:right; margin-bottom:0;}
 html>body div.modal {position:fixed;}
@@ -109,6 +109,15 @@ a img{ border: 0; }
 
 a.issue.closed, a.issue.closed:link, a.issue.closed:visited { color: #999; text-decoration: line-through; }
 
+#sidebar a.selected {line-height:1.7em; padding:1px 3px 2px 2px; margin-left:-2px; background-color:#9DB9D5; color:#fff; border-radius:2px; -moz-border-radius:2px;}
+#sidebar a.selected:hover {text-decoration:none;}
+#admin-menu a {line-height:1.7em;}
+#admin-menu a.selected {padding-left: 20px !important; background-position: 2px 40%;}
+
+a.collapsible {padding-left: 12px; background: url(../images/arrow_expanded.png) no-repeat -3px 40%;}
+a.collapsible.collapsed {background: url(../images/arrow_collapsed.png) no-repeat -5px 40%;}
+
+a#toggle-completed-versions {color:#999;}
 /***** Tables *****/
 table.list { border: 1px solid #e4e4e4;  border-collapse: collapse; width: 100%; margin-bottom: 4px; }
 table.list th {  background-color:#EEEEEE; padding: 4px; white-space:nowrap; }
@@ -167,7 +176,6 @@ tr.changeset ul, ol { margin-top: 0px; margin-bottom: 0px; }
 tr.changeset td.revision_graph { width: 15%; background-color: #fffffb; }
 tr.changeset td.author { text-align: center; width: 15%; white-space:nowrap;}
 tr.changeset td.committed_on { text-align: center; width: 15%; white-space:nowrap;}
-tr.changeset td.comments_nowrap { width: 45%; white-space:nowrap;}
 
 table.files tr.file td { text-align: center; }
 table.files tr.file td.filename { text-align: left; padding-left: 24px; }
@@ -192,6 +200,8 @@ tr.user td.email { width:18%; }
 tr.user td { white-space: nowrap; }
 tr.user.locked, tr.user.registered { color: #aaa; }
 tr.user.locked a, tr.user.registered a { color: #aaa; }
+
+table.permissions td.role {color:#999;font-size:90%;font-weight:normal !important;text-align:center;vertical-align:bottom;}
 
 tr.wiki-page-version td.updated_on, tr.wiki-page-version td.author {text-align:center;}
 
@@ -229,6 +239,16 @@ table.attributes td { vertical-align: top; }
 
 table.boards a.board, h3.comments { background: url(../images/comment.png) no-repeat 0% 50%; padding-left: 20px; }
 
+table.query-columns {
+    border-collapse: collapse;
+    border: 0;
+}
+
+table.query-columns td.buttons {
+    vertical-align: middle;
+    text-align: center;
+}
+
 td.center {text-align:center;}
 
 h3.version { background: url(../images/package.png) no-repeat 0% 50%; padding-left: 20px; }
@@ -243,7 +263,13 @@ div.projects h3 { background: url(../images/projects.png) no-repeat 0% 50%; padd
 #watchers select {width: 95%; display: block;}
 #watchers a.delete {opacity: 0.4;}
 #watchers a.delete:hover {opacity: 1;}
-#watchers img.gravatar {vertical-align: middle;margin: 0 4px 2px 0;}
+#watchers img.gravatar {margin: 0 4px 2px 0;}
+
+span#watchers_inputs {overflow:auto; display:block;}
+span.search_for_watchers {display:block;}
+span.search_for_watchers, span.add_attachment {font-size:80%; line-height:2.5em;}
+span.search_for_watchers a, span.add_attachment a {padding-left:16px; background: url(../images/bullet_add.png) no-repeat 0 50%; }
+
 
 .highlight { background-color: #FCFD8D;}
 .highlight.token-1 { background-color: #faa;}
@@ -270,6 +296,7 @@ div.square {
 .contextual input, .contextual select {font-size:0.9em;}
 .message .contextual { margin-top: 0; }
 
+.splitcontent {overflow:auto;}
 .splitcontentleft{float:left; width:49%;}
 .splitcontentright{float:right; width:49%;}
 form {display: inline;}
@@ -292,6 +319,9 @@ div.issue div.subject p {margin: 0; margin-bottom: 0.1em; font-size: 90%; color:
 div.issue div.subject>div>p { margin-top: 0.5em; }
 div.issue div.subject h3 {margin: 0; margin-bottom: 0.1em;}
 div.issue span.private { position:relative; bottom: 2px; text-transform: uppercase; background: #d22; color: #fff; font-weight:bold; padding: 0px 2px 0px 2px; font-size: 60%; margin-right: 2px; border-radius: 2px; -moz-border-radius: 2px;}
+div.issue .next-prev-links {color:#999;}
+div.issue table.attributes th {width:22%;}
+div.issue table.attributes td {width:28%;}
 
 #issue_tree table.issues, #relations table.issues { border: 0; }
 #issue_tree td.checkbox, #relations td.checkbox {display:none;}
@@ -308,7 +338,8 @@ fieldset#filters tr.filter { height: 2em; }
 fieldset#filters td.field { width:200px; }
 fieldset#filters td.operator { width:170px; }
 fieldset#filters td.values { white-space:nowrap; }
-fieldset#filters td.values img { vertical-align: bottom; }
+fieldset#filters td.values select {min-width:130px;}
+fieldset#filters td.values img { vertical-align: middle; margin-left:1px; }
 fieldset#filters td.add-filter { text-align: right; vertical-align: top; }
 .buttons { font-size: 0.9em; margin-bottom: 1.4em; margin-top: 1em; }
 
@@ -316,6 +347,8 @@ div#issue-changesets {float:right; width:45%; margin-left: 1em; margin-bottom: 1
 div#issue-changesets div.changeset { padding: 4px;}
 div#issue-changesets div.changeset { border-bottom: 1px solid #ddd; }
 div#issue-changesets p { margin-top: 0; margin-bottom: 1em;}
+
+.journal ul.details img {margin:0 0 -3px 4px; vertical-middle:base;}
 
 div#activity dl, #search-results { margin-left: 2em; }
 div#activity dd, #search-results dd { margin-bottom: 1em; padding-left: 18px; font-size: 0.9em; }
@@ -353,16 +386,17 @@ div#roadmap .related-issues td.checkbox { display: none; }
 div#roadmap .wiki h1:first-child { display: none; }
 div#roadmap .wiki h1 { font-size: 120%; }
 div#roadmap .wiki h2 { font-size: 110%; }
-body.controller-versions.action-show div#roadmap .related-issues {width:auto;}
+body.controller-versions.action-show div#roadmap .related-issues {width:70%;}
 
-div#version-summary { float:right; width:380px; margin-left: 16px; margin-bottom: 16px; background-color: #fff; }
+div#version-summary { float:right; width:28%; margin-left: 16px; margin-bottom: 16px; background-color: #fff; }
 div#version-summary fieldset { margin-bottom: 1em; }
-div#version-summary .total-hours { text-align: right; }
+div#version-summary fieldset.time-tracking table { width:100%; }
+div#version-summary th, div#version-summary td.total-hours { text-align: right; }
 
 table#time-report td.hours, table#time-report th.period, table#time-report th.total { text-align: right; padding-right: 0.5em; }
-table#time-report tbody tr { font-style: italic; color: #777; }
-table#time-report tbody tr.last-level { font-style: normal; color: #555; }
-table#time-report tbody tr.total { font-style: normal; font-weight: bold; color: #555; background-color:#EEEEEE; }
+table#time-report tbody tr.subtotal { font-style: italic; color:#777;}
+table#time-report tbody tr.subtotal td.hours { color:#b0b0b0; }
+table#time-report tbody tr.total { font-weight: bold; background-color:#EEEEEE; border-top:1px solid #e4e4e4;}
 table#time-report .hours-dec { font-size: 0.9em; }
 
 div.wiki-page .contextual a {opacity: 0.4}
@@ -383,6 +417,8 @@ ul.projects div.root a.project { font-family: "Trebuchet MS", Verdana, sans-seri
 #tracker_project_ids ul { margin: 0;  padding-left: 1em; }
 #tracker_project_ids li { list-style-type:none; }
 
+#related-issues li img {vertical-align:middle;}
+
 ul.properties {padding:0; font-size: 0.9em; color: #777;}
 ul.properties li {list-style-type:none;}
 ul.properties li span {font-style:italic;}
@@ -396,6 +432,7 @@ ul.properties li span {font-style:italic;}
 #workflow_copy_form select { width: 200px; }
 
 textarea#custom_field_possible_values {width: 99%}
+input#content_comments {width: 99%}
 
 .pagination {font-size: 90%}
 p.pagination {margin-top:8px;}
@@ -405,7 +442,7 @@ p.pagination {margin-top:8px;}
 margin: 0;
 padding: 3px 0 3px 0;
 padding-left: 180px; /* width of left column containing the label elements */
-height: 1%;
+min-height: 1.8em;
 clear:left;
 }
 
@@ -467,7 +504,7 @@ fieldset#notified_events .parent { padding-left: 20px; }
 .required {color: #bb0000;}
 .summary {font-style: italic;}
 
-#attachments_fields input[type=text] {margin-left: 8px; }
+#attachments_fields input.description {margin-left: 8px; width:340px;}
 #attachments_fields span {display:block; white-space:nowrap;}
 #attachments_fields img {vertical-align: middle;}
 
@@ -492,14 +529,24 @@ div#tab-content-members fieldset legend, div#tab-content-memberships fieldset le
 div#tab-content-members fieldset label, div#tab-content-memberships fieldset label, div#tab-content-users fieldset label { display: block; }
 div#tab-content-members fieldset div, div#tab-content-users fieldset div { max-height: 400px; overflow:auto; }
 
+#users_for_watcher {height: 200px; overflow:auto;}
+#users_for_watcher label {display: block;}
+
 table.members td.group { padding-left: 20px; background: url(../images/group.png) no-repeat 0% 50%; }
 
 input#principal_search, input#user_search {width:100%}
+input#principal_search, input#user_search {
+  background: url(../images/magnifier.png) no-repeat 2px 50%; padding-left:20px;
+  border:1px solid #9EB1C2; border-radius:3px; height:1.5em; width:95%;
+}
+input#principal_search.ajax-loading, input#user_search.ajax-loading {
+ background-image: url(../images/loading.gif);
+}
 
 * html div#tab-content-members fieldset div { height: 450px; }
 
 /***** Flash & error messages ****/
-#errorExplanation, div.flash, .nodata, .warning {
+#errorExplanation, div.flash, .nodata, .warning, .conflict {
     padding: 4px 4px 4px 30px;
     margin-bottom: 12px;
     font-size: 1.1em;
@@ -522,12 +569,12 @@ div.flash.notice {
     color: #005f00;
 }
 
-div.flash.warning {
-  background: url(../images/warning.png) 8px 5px no-repeat;
+div.flash.warning, .conflict {
+    background: url(../images/warning.png) 8px 5px no-repeat;
     background-color: #FFEBC1;
     border-color: #FDBF3B;
     color: #A6750C;
-  text-align: left;
+    text-align: left;
 }
 
 .nodata, .warning {
@@ -539,6 +586,8 @@ div.flash.warning {
 
 #errorExplanation ul { font-size: 0.9em;}
 #errorExplanation h2, #errorExplanation p { display: none; }
+
+.conflict-details {font-size:80%;}
 
 /***** Ajax indicator ******/
 #ajax-indicator {
@@ -599,7 +648,6 @@ color:#505050;
 
 /***** Progress bar *****/
 table.progress {
-    border: 1px solid #D7D7D7;
     border-collapse: collapse;
     border-spacing: 0pt;
     empty-cells: show;
@@ -608,21 +656,22 @@ table.progress {
     margin: 1px 6px 1px 0px;
 }
 
-table.progress td { height: 0.9em; }
+table.progress td { height: 1em; }
 table.progress td.closed { background: #BAE0BA none repeat scroll 0%; }
-table.progress td.done { background: #DEF0DE none repeat scroll 0%; }
-table.progress td.open { background: #FFF none repeat scroll 0%; }
+table.progress td.done { background: #D3EDD3 none repeat scroll 0%; }
+table.progress td.todo { background: #eee none repeat scroll 0%; }
 p.pourcent {font-size: 80%;}
-p.progress-info {clear: left; font-style: italic; font-size: 80%;}
+p.progress-info {clear: left; font-size: 80%; margin-top:-4px; color:#777;}
 
+#roadmap table.progress td { height: 1.2em; }
 /***** Tabs *****/
 #content .tabs {height: 2.6em; margin-bottom:1.2em; position:relative; overflow:hidden;}
-#content .tabs ul {margin:0; position:absolute; bottom:0; padding-left:1em; width: 2000px; border-bottom: 1px solid #bbbbbb;}
+#content .tabs ul {margin:0; position:absolute; bottom:0; padding-left:0.5em; width: 2000px; border-bottom: 1px solid #bbbbbb;}
 #content .tabs ul li {
 float:left;
 list-style-type:none;
 white-space:nowrap;
-margin-right:8px;
+margin-right:4px;
 background:#fff;
 position:relative;
 margin-bottom:-1px;
@@ -635,9 +684,11 @@ line-height:1.3em;
 padding:4px 6px 4px 6px;
 border: 1px solid #ccc;
 border-bottom: 1px solid #bbbbbb;
-background-color: #eeeeee;
-color:#777;
+background-color: #f6f6f6;
+color:#999;
 font-weight:bold;
+border-top-left-radius:3px;
+border-top-right-radius:3px;
 }
 
 #content .tabs ul li a:hover {
@@ -649,6 +700,7 @@ text-decoration:none;
 background-color: #fff;
 border: 1px solid #bbbbbb;
 border-bottom: 1px solid #fff;
+color:#444;
 }
 
 #content .tabs ul li a.selected:hover {
@@ -672,11 +724,13 @@ button.tab-left, button.tab-right {
 button.tab-left {
     right: 20px;
     background: #eeeeee url(../images/bullet_arrow_left.png) no-repeat 50% 50%;
+    border-top-left-radius:3px;
 }
 
 button.tab-right {
     right: 0;
     background: #eeeeee url(../images/bullet_arrow_right.png) no-repeat 50% 50%;
+    border-top-right-radius:3px;
 }
 
 /***** Auto-complete *****/
@@ -727,7 +781,6 @@ border: 1px solid #e4e4e4;
 
 /***** Wiki *****/
 div.wiki table {
-    border: 1px solid #505050;
     border-collapse: collapse;
     margin-bottom: 1em;
 }
@@ -736,6 +789,8 @@ div.wiki table, div.wiki td, div.wiki th {
     border: 1px solid #bbb;
     padding: 4px;
 }
+
+div.wiki .noborder, div.wiki .noborder td, div.wiki .noborder th {border:0;}
 
 div.wiki .external {
     background-position: 0% 60%;
@@ -921,14 +976,19 @@ padding-bottom: 3px;
 .icon-zoom-in { background-image: url(../images/zoom_in.png); }
 .icon-zoom-out { background-image: url(../images/zoom_out.png); }
 .icon-passwd { background-image: url(../images/textfield_key.png); }
+.icon-test { background-image: url(../images/bullet_go.png); }
 
 .icon-file { background-image: url(../images/files/default.png); }
 .icon-file.text-plain { background-image: url(../images/files/text.png); }
 .icon-file.text-x-c { background-image: url(../images/files/c.png); }
 .icon-file.text-x-csharp { background-image: url(../images/files/csharp.png); }
+.icon-file.text-x-java { background-image: url(../images/files/java.png); }
+.icon-file.text-x-javascript { background-image: url(../images/files/js.png); }
 .icon-file.text-x-php { background-image: url(../images/files/php.png); }
 .icon-file.text-x-ruby { background-image: url(../images/files/ruby.png); }
 .icon-file.text-xml { background-image: url(../images/files/xml.png); }
+.icon-file.text-css { background-image: url(../images/files/css.png); }
+.icon-file.text-html { background-image: url(../images/files/html.png); }
 .icon-file.image-gif { background-image: url(../images/files/image.png); }
 .icon-file.image-jpeg { background-image: url(../images/files/image.png); }
 .icon-file.image-png { background-image: url(../images/files/image.png); }
@@ -941,11 +1001,12 @@ img.gravatar {
     padding: 2px;
     border: solid 1px #d5d5d5;
     background: #fff;
+    vertical-align: middle;
 }
 
 div.issue img.gravatar {
-    float: right;
-    margin: 0 0 0 1em;
+    float: left;
+    margin: 0 6px 0 0;
     padding: 5px;
 }
 
@@ -958,15 +1019,15 @@ div.issue table img.gravatar {
 }
 
 h2 img.gravatar {
-    padding: 3px;
     margin: -2px 4px -4px 0;
-    vertical-align: top;
+}
+
+h3 img.gravatar {
+    margin: -4px 4px -4px 0;
 }
 
 h4 img.gravatar {
-    padding: 3px;
-    margin: -6px 0 -4px 0;
-    vertical-align: top;
+    margin: -6px 4px -4px 0;
 }
 
 td.username img.gravatar {
@@ -1003,11 +1064,11 @@ h2 img { vertical-align:middle; }
   #top-menu, #header, #main-menu, #sidebar, #footer, .contextual, .other-formats { display:none; }
   #main { background: #fff; }
   #content { width: 99%; margin: 0; padding: 0; border: 0; background: #fff; overflow: visible !important;}
-    #wiki_add_attachment { display:none; }
+  #wiki_add_attachment { display:none; }
   .hide-when-print { display: none; }
-    .autoscroll {overflow-x: visible;}
-    table.list {margin-top:0.5em;}
-    table.list th, table.list td {border: 1px solid #aaa;}
+  .autoscroll {overflow-x: visible;}
+  table.list {margin-top:0.5em;}
+  table.list th, table.list td {border: 1px solid #aaa;}
 }
 
 /* Accessibility specific styles */

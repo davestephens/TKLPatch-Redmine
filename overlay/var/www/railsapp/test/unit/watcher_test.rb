@@ -29,6 +29,13 @@ class WatcherTest < ActiveSupport::TestCase
     @issue = Issue.find(1)
   end
 
+  def test_validate
+    user = User.find(5)
+    assert !user.active?
+    watcher = Watcher.new(:user_id => user.id)
+    assert !watcher.save
+  end
+
   def test_watch
     assert @issue.add_watcher(@user)
     @issue.reload
@@ -72,6 +79,13 @@ class WatcherTest < ActiveSupport::TestCase
     issue = Issue.new
     issue.watcher_user_ids = ['1', '3']
     assert issue.watched_by?(User.find(1))
+  end
+
+  def test_watcher_user_ids_should_make_ids_uniq
+    issue = Issue.new(:project => Project.find(1), :tracker_id => 1, :subject => "test", :author => User.find(2))
+    issue.watcher_user_ids = ['1', '3', '1']
+    issue.save!
+    assert_equal 2, issue.watchers.count
   end
 
   def test_addable_watcher_users

@@ -54,7 +54,17 @@ class UserTest < ActiveSupport::TestCase
     u = User.new
     u.mail = ''
     assert !u.valid?
-    assert_equal I18n.translate('activerecord.errors.messages.blank'), u.errors.on(:mail)
+    assert_include I18n.translate('activerecord.errors.messages.blank'), u.errors[:mail]
+  end
+
+  def test_login_length_validation
+    user = User.new(:firstname => "new", :lastname => "user", :mail => "newuser@somenet.foo")
+    user.login = "x" * (User::LOGIN_LENGTH_LIMIT+1)
+    assert !user.valid?
+
+    user.login = "x" * (User::LOGIN_LENGTH_LIMIT)
+    assert user.valid?
+    assert user.save
   end
 
   def test_create
@@ -99,7 +109,7 @@ class UserTest < ActiveSupport::TestCase
       u.login = 'NewUser'
       u.password, u.password_confirmation = "password", "password"
       assert !u.save
-      assert_equal I18n.translate('activerecord.errors.messages.taken'), u.errors.on(:login)
+      assert_include I18n.translate('activerecord.errors.messages.taken'), u.errors[:login]
     end
   end
 
@@ -113,7 +123,7 @@ class UserTest < ActiveSupport::TestCase
     u.login = 'newuser2'
     u.password, u.password_confirmation = "password", "password"
     assert !u.save
-    assert_equal I18n.translate('activerecord.errors.messages.taken'), u.errors.on(:mail)
+    assert_include I18n.translate('activerecord.errors.messages.taken'), u.errors[:mail]
   end
 
   def test_update
@@ -313,9 +323,8 @@ class UserTest < ActiveSupport::TestCase
 
   def test_destroy_should_nullify_changesets
     changeset = Changeset.create!(
-      :repository => Repository::Subversion.create!(
-        :project_id => 1,
-        :url => 'file:///var/svn'
+      :repository => Repository::Subversion.generate!(
+        :project_id => 1
       ),
       :revision => '12',
       :committed_on => Time.now,
@@ -392,10 +401,12 @@ class UserTest < ActiveSupport::TestCase
 
   def test_name_format
     assert_equal 'Smith, John', @jsmith.name(:lastname_coma_firstname)
-    Setting.user_format = :firstname_lastname
-    assert_equal 'John Smith', @jsmith.reload.name
-    Setting.user_format = :username
-    assert_equal 'jsmith', @jsmith.reload.name
+    with_settings :user_format => :firstname_lastname do
+      assert_equal 'John Smith', @jsmith.reload.name
+    end
+    with_settings :user_format => :username do
+      assert_equal 'jsmith', @jsmith.reload.name
+    end
   end
   
   def test_fields_for_order_statement_should_return_fields_according_user_format_setting
@@ -466,9 +477,35 @@ class UserTest < ActiveSupport::TestCase
         end
       end
 
+      context "binding with user's account" do
+        setup do
+          @auth_source = AuthSourceLdap.find(1)
+          @auth_source.account = "uid=$login,ou=Person,dc=redmine,dc=org"
+          @auth_source.account_password = ''
+          @auth_source.save!
+
+          @ldap_user = User.new(:mail => 'example1@redmine.org', :firstname => 'LDAP', :lastname => 'user', :auth_source_id => 1)
+          @ldap_user.login = 'example1'
+          @ldap_user.save!
+        end
+
+        context "with a successful authentication" do
+          should "return the user" do
+            assert_equal @ldap_user, User.try_to_login('example1', '123456')
+          end
+        end
+
+        context "with an unsuccessful authentication" do
+          should "return nil" do
+            assert_nil User.try_to_login('example1', '11111')
+          end
+        end
+      end
+
       context "on the fly registration" do
         setup do
           @auth_source = AuthSourceLdap.find(1)
+          @auth_source.update_attribute :onthefly_register, true
         end
 
         context "with a successful authentication" do
@@ -487,6 +524,30 @@ class UserTest < ActiveSupport::TestCase
             assert_no_difference('User.count') do
               user = User.try_to_login('edavis', '123456')
               assert user.admin?
+            end
+          end
+        end
+
+        context "binding with user's account" do
+          setup do
+            @auth_source = AuthSourceLdap.find(1)
+            @auth_source.account = "uid=$login,ou=Person,dc=redmine,dc=org"
+            @auth_source.account_password = ''
+            @auth_source.save!
+          end
+  
+          context "with a successful authentication" do
+            should "create a new user account if it doesn't exist" do
+              assert_difference('User.count') do
+                user = User.try_to_login('example1', '123456')
+                assert_kind_of User, user
+              end
+            end
+          end
+  
+          context "with an unsuccessful authentication" do
+            should "return nil" do
+              assert_nil User.try_to_login('example1', '11111')
             end
           end
         end
@@ -515,8 +576,6 @@ class UserTest < ActiveSupport::TestCase
     assert_equal 1, anon2.errors.count
   end
 
-  should_have_one :rss_token
-
   def test_rss_key
     assert_nil @jsmith.rss_token
     key = @jsmith.rss_key
@@ -525,9 +584,6 @@ class UserTest < ActiveSupport::TestCase
     @jsmith.reload
     assert_equal key, @jsmith.rss_key
   end
-
-
-  should_have_one :api_token
 
   context "User#api_key" do
     should "generate a new one if the user doesn't have one" do
@@ -572,6 +628,38 @@ class UserTest < ActiveSupport::TestCase
 
       assert_equal user, User.find_by_api_key(token.value)
     end
+  end
+
+  def test_default_admin_account_changed_should_return_false_if_account_was_not_changed
+    user = User.find_by_login("admin")
+    user.password = "admin"
+    user.save!
+
+    assert_equal false, User.default_admin_account_changed?
+  end
+
+  def test_default_admin_account_changed_should_return_true_if_password_was_changed
+    user = User.find_by_login("admin")
+    user.password = "newpassword"
+    user.save!
+
+    assert_equal true, User.default_admin_account_changed?
+  end
+
+  def test_default_admin_account_changed_should_return_true_if_account_is_disabled
+    user = User.find_by_login("admin")
+    user.password = "admin"
+    user.status = User::STATUS_LOCKED
+    user.save!
+
+    assert_equal true, User.default_admin_account_changed?
+  end
+
+  def test_default_admin_account_changed_should_return_true_if_account_does_not_exist
+    user = User.find_by_login("admin")
+    user.destroy
+
+    assert_equal true, User.default_admin_account_changed?
   end
 
   def test_roles_for_project

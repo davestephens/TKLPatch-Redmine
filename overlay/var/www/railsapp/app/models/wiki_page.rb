@@ -19,6 +19,8 @@ require 'diff'
 require 'enumerator'
 
 class WikiPage < ActiveRecord::Base
+  include Redmine::SafeAttributes
+
   belongs_to :wiki
   has_one :content, :class_name => 'WikiContent', :foreign_key => 'page_id', :dependent => :destroy
   acts_as_attachable :delete_permission => :delete_wiki_pages_attachments
@@ -55,7 +57,11 @@ class WikiPage < ActiveRecord::Base
   # Wiki pages that are protected by default
   DEFAULT_PROTECTED_PAGES = %w(sidebar)
 
-  def after_initialize
+  safe_attributes 'parent_id',
+    :if => lambda {|page, user| page.new_record? || user.allowed_to?(:rename_wiki_pages, page.project)}
+
+  def initialize(attributes=nil, *args)
+    super
     if new_record? && DEFAULT_PROTECTED_PAGES.include?(title.to_s.downcase)
       self.protected = true
     end
@@ -136,7 +142,10 @@ class WikiPage < ActiveRecord::Base
     unless @updated_on
       if time = read_attribute(:updated_on)
         # content updated_on was eager loaded with the page
-        @updated_on = Time.parse(time) rescue nil
+        begin
+          @updated_on = Time.zone ? Time.zone.parse(time.to_s) : Time.parse(time.to_s)
+        rescue
+        end
       else
         @updated_on = content && content.updated_on
       end

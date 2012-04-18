@@ -19,9 +19,16 @@ class SysController < ActionController::Base
   before_filter :check_enabled
 
   def projects
-    p = Project.active.has_module(:repository).find(:all, :include => :repository, :order => 'identifier')
+    p = Project.active.has_module(:repository).find(
+                   :all,
+                   :include => :repository,
+                   :order => "#{Project.table_name}.identifier"
+                 )
     # extra_info attribute from repository breaks activeresource client
-    render :xml => p.to_xml(:only => [:id, :identifier, :name, :is_public, :status], :include => {:repository => {:only => [:id, :url]}})
+    render :xml => p.to_xml(
+                       :only => [:id, :identifier, :name, :is_public, :status],
+                       :include => {:repository => {:only => [:id, :url]}}
+                     )
   end
 
   def create_project_repository
@@ -30,9 +37,10 @@ class SysController < ActionController::Base
       render :nothing => true, :status => 409
     else
       logger.info "Repository for #{project.name} was reported to be created by #{request.remote_ip}."
-      project.repository = Repository.factory(params[:vendor], params[:repository])
-      if project.repository && project.repository.save
-        render :xml => project.repository.to_xml(:only => [:id, :url]), :status => 201
+      repository = Repository.factory(params[:vendor], params[:repository])
+      repository.project = project
+      if repository.save
+        render :xml => {repository.class.name.underscore.gsub('/', '-') => {:id => repository.id, :url => repository.url}}, :status => 201
       else
         render :nothing => true, :status => 422
       end
@@ -41,14 +49,22 @@ class SysController < ActionController::Base
 
   def fetch_changesets
     projects = []
+    scope = Project.active.has_module(:repository)
     if params[:id]
-      projects << Project.active.has_module(:repository).find(params[:id])
+      project = nil
+      if params[:id].to_s =~ /^\d*$/
+        project = scope.find(params[:id])
+      else
+        project = scope.find_by_identifier(params[:id])
+      end
+      raise ActiveRecord::RecordNotFound unless project
+      projects << project
     else
-      projects = Project.active.has_module(:repository).find(:all, :include => :repository)
+      projects = scope.all
     end
     projects.each do |project|
-      if project.repository
-        project.repository.fetch_changesets
+      project.repositories.each do |repository|
+        repository.fetch_changesets
       end
     end
     render :nothing => true, :status => 200

@@ -1002,7 +1002,26 @@ ar:
   description_date_to: ادخل تاريخ الانتهاء
   text_rmagick_available: RMagick available (optional)
   text_wiki_page_destroy_question: This page has %{descendants} child page(s) and descendant(s). What do you want to do?
-  text_project_identifier_info: Only lower case letters (a-z), numbers and dashes are allowed.<br />Once saved, the identifier cannot be changed.
   text_repository_usernames_mapping: |-
     Select or update the Redmine user mapped to each username found in the repository log.
     Users with the same Redmine and repository username or email are automatically mapped.
+  notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
+  label_x_issues:
+    zero:  0 قضية
+    one:   1 قضية
+    other: "%{count} قضايا"
+  label_repository_new: New repository
+  field_repository_is_default: Main repository
+  label_copy_attachments: Copy attachments
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: Completed versions
+  text_project_identifier_info: Only lower case letters (a-z), numbers, dashes and underscores are allowed.<br />Once saved, the identifier cannot be changed.
+  field_multiple: Multiple values
+  setting_commit_cross_project_ref: Allow issues of all the other projects to be referenced and fixed
+  text_issue_conflict_resolution_add_notes: Add my notes and discard my other changes
+  text_issue_conflict_resolution_overwrite: Apply my changes anyway (previous notes will be kept but some changes may be overwritten)
+  notice_issue_update_conflict: The issue has been updated by an other user while you were editing it.
+  text_issue_conflict_resolution_cancel: Discard all my changes and redisplay %{link}
+  permission_manage_related_issues: Manage related issues
+  field_ldap_filter: LDAP filter
+  label_search_for_watchers: Search for watchers to add

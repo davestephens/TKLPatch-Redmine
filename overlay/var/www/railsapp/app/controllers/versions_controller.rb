@@ -39,17 +39,19 @@ class VersionsController < ApplicationController
         @versions = @project.shared_versions || []
         @versions += @project.rolled_up_versions.visible if @with_subprojects
         @versions = @versions.uniq.sort
-        @versions.reject! {|version| version.closed? || version.completed? } unless params[:completed]
+        unless params[:completed]
+          @completed_versions = @versions.select {|version| version.closed? || version.completed? }
+          @versions -= @completed_versions
+        end
 
         @issues_by_version = {}
-        unless @selected_tracker_ids.empty?
-          @versions.each do |version|
-            issues = version.fixed_issues.visible.find(:all,
-                                                       :include => [:project, :status, :tracker, :priority],
-                                                       :conditions => {:tracker_id => @selected_tracker_ids, :project_id => project_ids},
-                                                       :order => "#{Project.table_name}.lft, #{Tracker.table_name}.position, #{Issue.table_name}.id")
-            @issues_by_version[version] = issues
-          end
+        if @selected_tracker_ids.any? && @versions.any?
+          issues = Issue.visible.all(
+            :include => [:project, :status, :tracker, :priority, :fixed_version],
+            :conditions => {:tracker_id => @selected_tracker_ids, :project_id => project_ids, :fixed_version_id => @versions.map(&:id)},
+            :order => "#{Project.table_name}.lft, #{Tracker.table_name}.position, #{Issue.table_name}.id"
+          )
+          @issues_by_version = issues.group_by(&:fixed_version)
         end
         @versions.reject! {|version| !project_ids.include?(version.project_id) && @issues_by_version[version].blank?}
       }
@@ -72,15 +74,21 @@ class VersionsController < ApplicationController
 
   def new
     @version = @project.versions.build
-    if params[:version]
-      attributes = params[:version].dup
-      attributes.delete('sharing') unless attributes.nil? || @version.allowed_sharings.include?(attributes['sharing'])
-      @version.safe_attributes = attributes
+    @version.safe_attributes = params[:version]
+
+    respond_to do |format|
+      format.html
+      format.js do
+        render :update do |page|
+          page.replace_html 'ajax-modal', :partial => 'versions/new_modal'
+          page << "showModal('ajax-modal', '600px');"
+          page << "Form.Element.focus('version_name');"
+        end
+      end
     end
   end
 
   def create
-    # TODO: refactor with code above in #new
     @version = @project.versions.build
     if params[:version]
       attributes = params[:version].dup
@@ -96,9 +104,11 @@ class VersionsController < ApplicationController
             redirect_back_or_default :controller => 'projects', :action => 'settings', :tab => 'versions', :id => @project
           end
           format.js do
-            # IE doesn't support the replace_html rjs method for select box options
-            render(:update) {|page| page.replace "issue_fixed_version_id",
-              content_tag('select', '<option></option>' + version_options_for_select(@project.shared_versions.open, @version), :id => 'issue_fixed_version_id', :name => 'issue[fixed_version_id]')
+            render(:update) {|page|
+              page << 'hideModal();'
+              # IE doesn't support the replace_html rjs method for select box options
+              page.replace "issue_fixed_version_id",
+                content_tag('select', content_tag('option') + version_options_for_select(@project.shared_versions.open, @version), :id => 'issue_fixed_version_id', :name => 'issue[fixed_version_id]')
             }
           end
           format.api do
@@ -109,7 +119,10 @@ class VersionsController < ApplicationController
         respond_to do |format|
           format.html { render :action => 'new' }
           format.js do
-            render(:update) {|page| page.alert(@version.errors.full_messages.join('\n')) }
+            render :update do |page|
+              page.replace_html 'ajax-modal', :partial => 'versions/new_modal'
+              page << "Form.Element.focus('version_name');"
+            end
           end
           format.api  { render_validation_errors(@version) }
         end
@@ -149,7 +162,6 @@ class VersionsController < ApplicationController
     redirect_to :controller => 'projects', :action => 'settings', :tab => 'versions', :id => @project
   end
 
-  verify :method => :delete, :only => :destroy, :render => {:nothing => true, :status => :method_not_allowed }
   def destroy
     if @version.fixed_issues.empty?
       @version.destroy

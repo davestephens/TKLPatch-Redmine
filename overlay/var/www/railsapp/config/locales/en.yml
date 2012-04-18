@@ -162,6 +162,7 @@ en:
   notice_feeds_access_key_reseted: Your RSS access key was reset.
   notice_api_access_key_reseted: Your API access key was reset.
   notice_failed_to_save_issues: "Failed to save %{count} issue(s) on %{total} selected: %{ids}."
+  notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
   notice_failed_to_save_members: "Failed to save member(s): %{errors}."
   notice_no_issue_selected: "No issue is selected! Please, check the issues you want to edit."
   notice_account_pending: "Your account was created and is now pending administrator approval."
@@ -171,6 +172,7 @@ en:
   notice_issue_done_ratios_updated: Issue done ratios updated.
   notice_gantt_chart_truncated: "The chart was truncated because it exceeds the maximum number of items that can be displayed (%{max})"
   notice_issue_successful_create: "Issue %{id} created."
+  notice_issue_update_conflict: "The issue has been updated by an other user while you were editing it."
 
   error_can_t_load_default_data: "Default configuration could not be loaded: %{value}"
   error_scm_not_found: "The entry or revision was not found in the repository."
@@ -317,6 +319,9 @@ en:
   field_root_directory: Root directory
   field_cvsroot: CVSROOT
   field_cvs_module: Module
+  field_repository_is_default: Main repository
+  field_multiple: Multiple values
+  field_ldap_filter: LDAP filter
 
   setting_app_title: Application title
   setting_app_subtitle: Application subtitle
@@ -377,6 +382,7 @@ en:
   setting_gantt_items_limit: Maximum number of items displayed on the gantt chart
   setting_issue_group_assignment: Allow issue assignment to groups
   setting_default_issue_start_date_to_creation_date: Use current date as start date for new issues
+  setting_commit_cross_project_ref: Allow issues of all the other projects to be referenced and fixed
 
   permission_add_project: Create project
   permission_add_subprojects: Create subprojects
@@ -435,6 +441,7 @@ en:
   permission_delete_own_messages: Delete own messages
   permission_export_wiki_pages: Export wiki pages
   permission_manage_subtasks: Manage subtasks
+  permission_manage_related_issues: Manage related issues
 
   project_module_issue_tracking: Issue tracking
   project_module_time_tracking: Time tracking
@@ -585,6 +592,10 @@ en:
     zero:  0 closed
     one:   1 closed
     other: "%{count} closed"
+  label_x_issues:
+    zero:  0 issues
+    one:   1 issue
+    other: "%{count} issues"
   label_total: Total
   label_permissions: Permissions
   label_current_status: Current status
@@ -645,6 +656,7 @@ en:
   label_not_contains: doesn't contain
   label_day_plural: days
   label_repository: Repository
+  label_repository_new: New repository
   label_repository_plural: Repositories
   label_browse: Browse
   label_modification: "%{count} change"
@@ -828,7 +840,11 @@ en:
   label_git_report_last_commit: Report last commit for files and directories
   label_parent_revision: Parent
   label_child_revision: Child
-  label_export_options: %{export_format} export options
+  label_export_options: "%{export_format} export options"
+  label_copy_attachments: Copy attachments
+  label_item_position: "%{position} of %{count}"
+  label_completed_versions: Completed versions
+  label_search_for_watchers: Search for watchers to add
 
   button_login: Login
   button_submit: Submit
@@ -905,7 +921,7 @@ en:
   text_tip_issue_begin_day: issue beginning this day
   text_tip_issue_end_day: issue ending this day
   text_tip_issue_begin_end_day: issue beginning and ending this day
-  text_project_identifier_info: 'Only lower case letters (a-z), numbers and dashes are allowed.<br />Once saved, the identifier cannot be changed.'
+  text_project_identifier_info: 'Only lower case letters (a-z), numbers, dashes and underscores are allowed.<br />Once saved, the identifier cannot be changed.'
   text_caracters_maximum: "%{count} characters maximum."
   text_caracters_minimum: "Must be at least %{count} characters long."
   text_length_between: "Length between %{min} and %{max} characters."
@@ -959,6 +975,9 @@ en:
   text_scm_command_version: Version
   text_scm_config: You can configure your scm commands in config/configuration.yml. Please restart the application after editing it.
   text_scm_command_not_available: Scm command is not available. Please check settings on the administration panel.
+  text_issue_conflict_resolution_overwrite: "Apply my changes anyway (previous notes will be kept but some changes may be overwritten)"
+  text_issue_conflict_resolution_add_notes: "Add my notes and discard my other changes"
+  text_issue_conflict_resolution_cancel: "Discard all my changes and redisplay %{link}"
 
   default_role_manager: Manager
   default_role_developer: Developer

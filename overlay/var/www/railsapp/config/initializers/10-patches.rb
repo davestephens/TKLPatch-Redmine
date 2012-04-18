@@ -1,3 +1,7 @@
+# Patches active_support/core_ext/load_error.rb to support 1.9.3 LoadError message
+if RUBY_VERSION >= '1.9.3'
+  MissingSourceFile::REGEXPS << [/^cannot load such file -- (.+)$/i, 1] 
+end
 
 require 'active_record'
 
@@ -6,38 +10,8 @@ module ActiveRecord
     include Redmine::I18n
 
     # Translate attribute names for validation errors display
-    def self.human_attribute_name(attr)
+    def self.human_attribute_name(attr, *args)
       l("field_#{attr.to_s.gsub(/_id$/, '')}", :default => attr)
-    end
-  end
-end
-
-module ActiveRecord
-  class Errors
-    def full_messages(options = {})
-      full_messages = []
-
-      @errors.each_key do |attr|
-        @errors[attr].each do |message|
-          next unless message
-
-          if attr == "base"
-            full_messages << message
-          elsif attr == "custom_values"
-            # Replace the generic "custom values is invalid"
-            # with the errors on custom values
-            @base.custom_values.each do |value|
-              value.errors.each do |attr, msg|
-                full_messages << value.custom_field.name + ' ' + msg
-              end
-            end
-          else
-            attr_name = @base.class.human_attribute_name(attr)
-            full_messages << attr_name + ' ' + message.to_s
-          end
-        end
-      end
-      full_messages
     end
   end
 end

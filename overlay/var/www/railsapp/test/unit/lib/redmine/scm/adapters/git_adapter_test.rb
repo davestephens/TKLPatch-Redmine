@@ -1,8 +1,5 @@
 # encoding: utf-8
 
-# This file includes UTF-8 "Felix Schäfer".
-# We need to consider Ruby 1.9 compatibility.
-
 require File.expand_path('../../../../../../test_helper', __FILE__)
 begin
   require 'mocha'
@@ -10,7 +7,6 @@ begin
   class GitAdapterTest < ActiveSupport::TestCase
     REPOSITORY_PATH = Rails.root.join('tmp/test/git_repository').to_s
 
-    FELIX_UTF8 = "Felix Schäfer"
     FELIX_HEX  = "Felix Sch\xC3\xA4fer"
     CHAR_1_HEX = "\xc3\x9c"
 
@@ -43,9 +39,9 @@ begin
                       nil,
                       nil,
                       'ISO-8859-1'
-                      )
+                   )
         assert @adapter
-        @char_1        = CHAR_1_HEX.dup
+        @char_1 = CHAR_1_HEX.dup
         if @char_1.respond_to?(:force_encoding)
           @char_1.force_encoding('UTF-8')
         end
@@ -65,19 +61,41 @@ begin
         @adapter.branches.each do |b|
           brs << b
         end
-        assert_equal 4, brs.length
-        assert_equal 'latin-1-path-encoding', brs[0].to_s 
-        assert_equal '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127', brs[0].revision
-        assert_equal brs[0].scmid, brs[0].revision
-        assert_equal 'master', brs[1].to_s
-        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', brs[1].revision
-        assert_equal brs[1].scmid, brs[1].revision
-        assert_equal 'test-latin-1', brs[2].to_s
-        assert_equal '67e7792ce20ccae2e4bb73eed09bb397819c8834', brs[2].revision
-        assert_equal brs[2].scmid, brs[2].revision
-        assert_equal 'test_branch', brs[3].to_s
-        assert_equal 'fba357b886984ee71185ad2065e65fc0417d9b92', brs[3].revision
-        assert_equal brs[3].scmid, brs[3].revision
+        assert_equal 6, brs.length
+        br_issue_8857 = brs[0]
+        assert_equal 'issue-8857', br_issue_8857.to_s 
+        assert_equal '2a682156a3b6e77a8bf9cd4590e8db757f3c6c78', br_issue_8857.revision
+        assert_equal br_issue_8857.scmid, br_issue_8857.revision
+        assert_equal false, br_issue_8857.is_default
+        br_latin_1_path = brs[1]
+        assert_equal 'latin-1-path-encoding', br_latin_1_path.to_s 
+        assert_equal '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127', br_latin_1_path.revision
+        assert_equal br_latin_1_path.scmid, br_latin_1_path.revision
+        assert_equal false, br_latin_1_path.is_default
+        br_master = brs[2]
+        assert_equal 'master', br_master.to_s
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', br_master.revision
+        assert_equal br_master.scmid, br_master.revision
+        assert_equal false, br_master.is_default
+        br_master_20120212 = brs[3]
+        assert_equal 'master-20120212', br_master_20120212.to_s
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', br_master_20120212.revision
+        assert_equal br_master_20120212.scmid, br_master_20120212.revision
+        assert_equal true, br_master_20120212.is_default
+        br_latin_1 = brs[-2]
+        assert_equal 'test-latin-1', br_latin_1.to_s
+        assert_equal '67e7792ce20ccae2e4bb73eed09bb397819c8834', br_latin_1.revision
+        assert_equal br_latin_1.scmid, br_latin_1.revision
+        assert_equal false, br_latin_1.is_default
+        br_test = brs[-1]
+        assert_equal 'test_branch', br_test.to_s
+        assert_equal 'fba357b886984ee71185ad2065e65fc0417d9b92', br_test.revision
+        assert_equal br_test.scmid, br_test.revision
+        assert_equal false, br_test.is_default
+      end
+
+      def test_default_branch
+        assert_equal 'master-20120212', @adapter.default_branch
       end
 
       def test_tags
@@ -85,30 +103,6 @@ begin
               "tag00.lightweight",
               "tag01.annotated",
             ], @adapter.tags
-      end
-
-      def test_getting_all_revisions
-        assert_equal 21, @adapter.revisions('',nil,nil,:all => true).length
-      end
-
-      def test_getting_certain_revisions
-        assert_equal 1, @adapter.revisions('','899a15d^','899a15d').length
-      end
-
-      def test_revisions_reverse
-        revs1 = @adapter.revisions('',nil,nil,{:all => true, :reverse => true })
-        assert_equal 21, revs1.length
-        assert_equal '7234cb2750b63f47bff735edc50a1c0a433c2518', revs1[0].identifier
-        assert_equal '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127', revs1[20].identifier
-      end
-
-      def test_revisions_reverse_with_time
-        since2 = Time.gm(2010, 9, 30, 0, 0, 0)
-        revs2  = @adapter.revisions('', nil, nil,
-                                    {:all => true, :since => since2, :reverse => true})
-        assert_equal 6, revs2.length
-        assert_equal '67e7792ce20ccae2e4bb73eed09bb397819c8834', revs2[0].identifier
-        assert_equal '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127', revs2[5].identifier
       end
 
       def test_revisions_master_all
@@ -122,7 +116,7 @@ begin
 
         revs2 = []
         @adapter.revisions('', nil, "master",
-                                    {:reverse => true}) do |rev|
+                           {:reverse => true}) do |rev|
           revs2 << rev
         end
         assert_equal 15, revs2.length
@@ -174,7 +168,7 @@ begin
 
         revs2 = []
         @adapter.revisions('', nil, "latin-1-path-encoding",
-                                    {:reverse => true}) do |rev|
+                           {:reverse => true}) do |rev|
           revs2 << rev
         end
         assert_equal 8, revs2.length
@@ -207,19 +201,113 @@ begin
       end
 
       def test_revisions_invalid_rev
+        assert_equal [], @adapter.revisions('', '1234abcd', "master")
+        assert_raise Redmine::Scm::Adapters::CommandFailed do
+          revs1 = []
+          @adapter.revisions('',
+                           '1234abcd',
+                           "master",
+                           {:reverse => true}) do |rev|
+            revs1 << rev
+          end
+        end
+      end
+
+      def test_revisions_includes_master_two_revs
         revs1 = []
-        @adapter.revisions('',
-                                    '1234abcd',
-                                    "master",
-                                    {:reverse => true}) do |rev|
+        @adapter.revisions('', nil, nil,
+                           {:reverse => true,
+                            :includes => ['83ca5fd546063a3c7dc2e568ba3355661a9e2b2c'],
+                            :excludes => ['4f26664364207fa8b1af9f8722647ab2d4ac5d43']}) do |rev|
           revs1 << rev
         end
-        assert_equal [], revs1
+        assert_equal 2, revs1.length
+        assert_equal 'ed5bb786bbda2dee66a2d50faf51429dbc043a7b', revs1[ 0].identifier
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', revs1[-1].identifier
+      end
+
+      def test_revisions_includes_master_two_revs_from_origin
+        revs1 = []
+        @adapter.revisions('', nil, nil,
+                           {:reverse => true,
+                            :includes => ['899a15dba03a3b350b89c3f537e4bbe02a03cdc9'],
+                            :excludes => []}) do |rev|
+          revs1 << rev
+        end
+        assert_equal 2, revs1.length
+        assert_equal '7234cb2750b63f47bff735edc50a1c0a433c2518', revs1[ 0].identifier
+        assert_equal '899a15dba03a3b350b89c3f537e4bbe02a03cdc9', revs1[ 1].identifier
+      end
+
+      def test_revisions_includes_merged_revs
+        revs1 = []
+        @adapter.revisions('', nil, nil,
+                           {:reverse => true,
+                            :includes => ['83ca5fd546063a3c7dc2e568ba3355661a9e2b2c'],
+                            :excludes => ['fba357b886984ee71185ad2065e65fc0417d9b92']}) do |rev|
+          revs1 << rev
+        end
+        assert_equal 7, revs1.length
+        assert_equal '7e61ac704deecde634b51e59daa8110435dcb3da', revs1[ 0].identifier
+        assert_equal '4a07fe31bffcf2888791f3e6cbc9c4545cefe3e8', revs1[ 1].identifier
+        assert_equal '32ae898b720c2f7eec2723d5bdd558b4cb2d3ddf', revs1[ 2].identifier
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', revs1[-1].identifier
+      end
+
+      def test_revisions_includes_two_heads
+        revs1 = []
+        @adapter.revisions('', nil, nil,
+                           {:reverse => true,
+                            :includes => ['83ca5fd546063a3c7dc2e568ba3355661a9e2b2c',
+                                          '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127'],
+                            :excludes => ['4f26664364207fa8b1af9f8722647ab2d4ac5d43',
+                                          '4fc55c43bf3d3dc2efb66145365ddc17639ce81e']}) do |rev|
+          revs1 << rev
+        end
+        assert_equal 4, revs1.length
+        assert_equal 'ed5bb786bbda2dee66a2d50faf51429dbc043a7b', revs1[ 0].identifier
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', revs1[ 1].identifier
+        assert_equal '64f1f3e89ad1cb57976ff0ad99a107012ba3481d', revs1[-2].identifier
+        assert_equal '1ca7f5ed374f3cb31a93ae5215c2e25cc6ec5127', revs1[-1].identifier
+      end
+
+      def test_revisions_disjointed_histories_revisions
+        revs1 = []
+        @adapter.revisions('', nil, nil,
+                           {:reverse => true,
+                            :includes => ['83ca5fd546063a3c7dc2e568ba3355661a9e2b2c',
+                                          '92397af84d22f27389c822848ecd5b463c181583'],
+                            :excludes => ['95488a44bc25f7d1f97d775a31359539ff333a63',
+                                          '4f26664364207fa8b1af9f8722647ab2d4ac5d43'] }) do |rev|
+          revs1 << rev
+        end
+        assert_equal 4, revs1.length
+        assert_equal 'ed5bb786bbda2dee66a2d50faf51429dbc043a7b', revs1[ 0].identifier
+        assert_equal '83ca5fd546063a3c7dc2e568ba3355661a9e2b2c', revs1[ 1].identifier
+        assert_equal 'bc201c95999c4f10d018b0aa03b541cd6a2ff0ee', revs1[-2].identifier
+        assert_equal '92397af84d22f27389c822848ecd5b463c181583', revs1[-1].identifier
+      end
+
+      def test_revisions_invalid_rev_excludes
+        assert_equal [],
+                     @adapter.revisions('', nil, nil,
+                                        {:reverse => true,
+                                         :includes => ['83ca5fd546063a3c7dc2e568ba3355661a9e2b2c'],
+                                         :excludes => ['0123abcd4567']})
+        assert_raise Redmine::Scm::Adapters::CommandFailed do
+          revs1 = []
+          @adapter.revisions('', nil, nil,
+                             {:reverse => true,
+                              :includes => ['83ca5fd546063a3c7dc2e568ba3355661a9e2b2c'],
+                              :excludes => ['0123abcd4567']}) do |rev|
+            revs1 << rev
+          end
+        end
       end
 
       def test_getting_revisions_with_spaces_in_filename
         assert_equal 1, @adapter.revisions("filemane with spaces.txt",
-                                           nil, nil, :all => true).length
+                                           nil, "master").length
       end
 
       def test_parents
@@ -251,7 +339,7 @@ begin
       def test_getting_revisions_with_leading_and_trailing_spaces_in_filename
         assert_equal " filename with a leading space.txt ",
            @adapter.revisions(" filename with a leading space.txt ",
-                               nil, nil, :all => true)[0].paths[0][:path]
+                               nil, "master")[0].paths[0][:path]
       end
 
       def test_getting_entries_with_leading_and_trailing_spaces_in_filename
@@ -289,7 +377,6 @@ begin
       def test_last_rev_with_spaces_in_filename
         last_rev = @adapter.lastrev("filemane with spaces.txt",
                                     "ed5bb786bbda2dee66a2d50faf51429dbc043a7b")
-        str_felix_utf8 = FELIX_UTF8.dup
         str_felix_hex  = FELIX_HEX.dup
         last_rev_author = last_rev.author
         if last_rev_author.respond_to?(:force_encoding)
@@ -297,8 +384,6 @@ begin
         end
         assert_equal "ed5bb786bbda2dee66a2d50faf51429dbc043a7b", last_rev.scmid
         assert_equal "ed5bb786bbda2dee66a2d50faf51429dbc043a7b", last_rev.identifier
-        assert_equal "#{str_felix_utf8} <felix@fachschaften.org>",
-                       last_rev.author
         assert_equal "#{str_felix_hex} <felix@fachschaften.org>",
                        last_rev.author
         assert_equal "2010-09-18 19:59:46".to_time, last_rev.time

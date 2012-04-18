@@ -92,22 +92,26 @@ module RepositoriesHelper
         text = link_to(h(text), :controller => 'repositories',
                              :action => 'show',
                              :id => @project,
+                             :repository_id => @repository.identifier_param,
                              :path => path_param,
                              :rev => @changeset.identifier)
-        output << "<li class='#{style}'>#{text}</li>"
+        output << "<li class='#{style}'>#{text}"
         output << render_changes_tree(s)
+        output << "</li>"
       elsif c = tree[file][:c]
         style << " change-#{c.action}"
         path_param = to_path_param(@repository.relative_path(c.path))
         text = link_to(h(text), :controller => 'repositories',
                              :action => 'entry',
                              :id => @project,
+                             :repository_id => @repository.identifier_param,
                              :path => path_param,
                              :rev => @changeset.identifier) unless c.action == 'D'
         text << " - #{h(c.revision)}" unless c.revision.blank?
         text << ' ('.html_safe + link_to(l(:label_diff), :controller => 'repositories',
                                        :action => 'diff',
                                        :id => @project,
+                                       :repository_id => @repository.identifier_param,
                                        :path => path_param,
                                        :rev => @changeset.identifier) + ') '.html_safe if c.action == 'M'
         text << ' '.html_safe + content_tag('span', h(c.from_path), :class => 'copied-from') unless c.from_path.blank?
@@ -138,13 +142,10 @@ module RepositoriesHelper
                options_for_select(scm_options, repository.class.name.demodulize),
                :disabled => (repository && !repository.new_record?),
                :onchange => remote_function(
-                  :url => {
-                      :controller => 'repositories',
-                      :action     => 'edit',
-                      :id         => @project
-                   },
-               :method => :get,
-               :with   => "Form.serialize(this.form)")
+                 :url => new_project_repository_path(@project),
+                 :method => :get,
+                 :update => 'content',
+                 :with   => "Form.serialize(this.form)")
              )
   end
 
@@ -255,59 +256,63 @@ module RepositoriesHelper
                      '<br />'.html_safe + l(:text_scm_path_encoding_note))
   end
 
-  def index_commits(commits, heads, href_proc = nil)
+  def index_commits(commits, heads)
     return nil if commits.nil? or commits.first.parents.nil?
-    map  = {}
-    commit_hashes = []
+
     refs_map = {}
-    href_proc ||= Proc.new {|x|x}
-    heads.each{|r| refs_map[r.scmid] ||= []; refs_map[r.scmid] << r}
-    commits.reverse.each_with_index do |c, i|
-      h = {}
-      h[:parents] = c.parents.collect do |p|
-        [p.scmid, 0, 0]
+    heads.each do |head|
+      refs_map[head.scmid] ||= []
+      refs_map[head.scmid] << head
+    end
+
+    commits_by_scmid = {}
+    commits.reverse.each_with_index do |commit, commit_index|
+
+      commits_by_scmid[commit.scmid] = {
+        :parent_scmids => commit.parents.collect { |parent| parent.scmid },
+        :rdmid => commit_index,
+        :refs  => refs_map.include?(commit.scmid) ? refs_map[commit.scmid].join(" ") : nil,
+        :scmid => commit.scmid,
+        :href  => block_given? ? yield(commit.scmid) : commit.scmid
+      }
+    end
+
+    heads.sort! { |head1, head2| head1.to_s <=> head2.to_s }
+
+    space = nil  
+    heads.each do |head|
+      if commits_by_scmid.include? head.scmid
+        space = index_head((space || -1) + 1, head, commits_by_scmid)
       end
-      h[:rdmid] = i
-      h[:space] = 0
-      h[:refs]  = refs_map[c.scmid].join(" ") if refs_map.include? c.scmid
-      h[:scmid] = c.scmid
-      h[:href]  = href_proc.call(c.scmid)
-      commit_hashes << h
-      map[c.scmid] = h
     end
-    heads.sort! do |a,b|
-      a.to_s <=> b.to_s
-    end
-    j = 0
-    heads.each do |h|
-      if map.include? h.scmid then
-        j = mark_chain(j += 1, map[h.scmid], map)
-      end
-    end
+
     # when no head matched anything use first commit
-    if j == 0 then
-       mark_chain(j += 1, map.values.first, map)
-    end
-    map
+    space ||= index_head(0, commits.first, commits_by_scmid)
+
+    return commits_by_scmid, space
   end
 
-  def mark_chain(mark, commit, map)
-    stack = [[mark, commit]]
-    markmax = mark
+  def index_head(space, commit, commits_by_scmid)
+
+    stack = [[space, commits_by_scmid[commit.scmid]]]
+    max_space = space
+
     until stack.empty?
-      current = stack.pop
-      m, commit = current
-      commit[:space] = m  if commit[:space] == 0
-      m1 = m - 1
-      commit[:parents].each_with_index do |p, i|
-        psha = p[0]
-        if map.include? psha  and  map[psha][:space] == 0 then
-          stack << [m1 += 1, map[psha]] if i == 0
-          stack = [[m1 += 1, map[psha]]] + stack if i > 0
+      space, commit = stack.pop
+      commit[:space] = space if commit[:space].nil?
+
+      space -= 1
+      commit[:parent_scmids].each_with_index do |parent_scmid, parent_index|
+
+        parent_commit = commits_by_scmid[parent_scmid]
+
+        if parent_commit and parent_commit[:space].nil?
+
+          stack.unshift [space += 1, parent_commit]
         end
       end
-      markmax = m1 if markmax < m1
+      max_space = space if max_space < space
     end
-    markmax
+    max_space
   end
 end

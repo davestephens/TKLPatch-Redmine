@@ -20,25 +20,13 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class MailHandlerTest < ActiveSupport::TestCase
-  fixtures :users, :projects,
-                   :enabled_modules,
-                   :roles,
-                   :members,
-                   :member_roles,
-                   :users,
-                   :issues,
-                   :issue_statuses,
-                   :workflows,
-                   :trackers,
-                   :projects_trackers,
-                   :versions,
-                   :enumerations,
-                   :issue_categories,
-                   :custom_fields,
-                   :custom_fields_trackers,
-                   :custom_fields_projects,
-                   :boards,
-                   :messages
+  fixtures :users, :projects, :enabled_modules, :roles,
+           :members, :member_roles, :users,
+           :issues, :issue_statuses,
+           :workflows, :trackers, :projects_trackers,
+           :versions, :enumerations, :issue_categories,
+           :custom_fields, :custom_fields_trackers, :custom_fields_projects,
+           :boards, :messages
 
   FIXTURES_PATH = File.dirname(__FILE__) + '/../fixtures/mail_handler'
 
@@ -79,7 +67,10 @@ class MailHandlerTest < ActiveSupport::TestCase
 
   def test_add_issue_with_default_tracker
     # This email contains: 'Project: onlinestore'
-    issue = submit_email('ticket_on_given_project.eml', :issue => {:tracker => 'Support request'})
+    issue = submit_email(
+              'ticket_on_given_project.eml',
+              :issue => {:tracker => 'Support request'}
+            )
     assert issue.is_a?(Issue)
     assert !issue.new_record?
     issue.reload
@@ -97,7 +88,10 @@ class MailHandlerTest < ActiveSupport::TestCase
   end
 
   def test_add_issue_with_attributes_override
-    issue = submit_email('ticket_with_attributes.eml', :allow_override => 'tracker,category,priority')
+    issue = submit_email(
+              'ticket_with_attributes.eml',
+              :allow_override => 'tracker,category,priority'
+            )
     assert issue.is_a?(Issue)
     assert !issue.new_record?
     issue.reload
@@ -123,7 +117,11 @@ class MailHandlerTest < ActiveSupport::TestCase
   end
 
   def test_add_issue_with_partial_attributes_override
-    issue = submit_email('ticket_with_attributes.eml', :issue => {:priority => 'High'}, :allow_override => ['tracker'])
+    issue = submit_email(
+              'ticket_with_attributes.eml',
+              :issue => {:priority => 'High'},
+              :allow_override => ['tracker']
+            )
     assert issue.is_a?(Issue)
     assert !issue.new_record?
     issue.reload
@@ -137,7 +135,10 @@ class MailHandlerTest < ActiveSupport::TestCase
   end
 
   def test_add_issue_with_spaces_between_attribute_and_separator
-    issue = submit_email('ticket_with_spaces_between_attribute_and_separator.eml', :allow_override => 'tracker,category,priority')
+    issue = submit_email(
+              'ticket_with_spaces_between_attribute_and_separator.eml',
+              :allow_override => 'tracker,category,priority'
+            )
     assert issue.is_a?(Issue)
     assert !issue.new_record?
     issue.reload
@@ -172,7 +173,8 @@ class MailHandlerTest < ActiveSupport::TestCase
     assert !issue.new_record?
     issue.reload
     assert_equal 'New ticket with custom field values', issue.subject
-    assert_equal 'Value for a custom field', issue.custom_value_for(CustomField.find_by_name('Searchable field')).value
+    assert_equal 'Value for a custom field',
+                 issue.custom_value_for(CustomField.find_by_name('Searchable field')).value
     assert !issue.description.match(/^searchable field:/i)
   end
 
@@ -187,14 +189,22 @@ class MailHandlerTest < ActiveSupport::TestCase
 
   def test_add_issue_by_unknown_user
     assert_no_difference 'User.count' do
-      assert_equal false, submit_email('ticket_by_unknown_user.eml', :issue => {:project => 'ecookbook'})
+      assert_equal false,
+                   submit_email(
+                     'ticket_by_unknown_user.eml',
+                     :issue => {:project => 'ecookbook'}
+                   )
     end
   end
 
   def test_add_issue_by_anonymous_user
     Role.anonymous.add_permission!(:add_issues)
     assert_no_difference 'User.count' do
-      issue = submit_email('ticket_by_unknown_user.eml', :issue => {:project => 'ecookbook'}, :unknown_user => 'accept')
+      issue = submit_email(
+                'ticket_by_unknown_user.eml',
+                :issue => {:project => 'ecookbook'},
+                :unknown_user => 'accept'
+              )
       assert issue.is_a?(Issue)
       assert issue.author.anonymous?
     end
@@ -203,7 +213,11 @@ class MailHandlerTest < ActiveSupport::TestCase
   def test_add_issue_by_anonymous_user_with_no_from_address
     Role.anonymous.add_permission!(:add_issues)
     assert_no_difference 'User.count' do
-      issue = submit_email('ticket_by_empty_user.eml', :issue => {:project => 'ecookbook'}, :unknown_user => 'accept')
+      issue = submit_email(
+                'ticket_by_empty_user.eml',
+                :issue => {:project => 'ecookbook'},
+                :unknown_user => 'accept'
+              )
       assert issue.is_a?(Issue)
       assert issue.author.anonymous?
     end
@@ -213,7 +227,12 @@ class MailHandlerTest < ActiveSupport::TestCase
     Role.anonymous.add_permission!(:add_issues)
     assert_no_difference 'User.count' do
       assert_no_difference 'Issue.count' do
-        assert_equal false, submit_email('ticket_by_unknown_user.eml', :issue => {:project => 'onlinestore'}, :unknown_user => 'accept')
+        assert_equal false,
+                     submit_email(
+                       'ticket_by_unknown_user.eml',
+                       :issue => {:project => 'onlinestore'},
+                       :unknown_user => 'accept'
+                     )
       end
     end
   end
@@ -221,7 +240,12 @@ class MailHandlerTest < ActiveSupport::TestCase
   def test_add_issue_by_anonymous_user_on_private_project_without_permission_check
     assert_no_difference 'User.count' do
       assert_difference 'Issue.count' do
-        issue = submit_email('ticket_by_unknown_user.eml', :issue => {:project => 'onlinestore'}, :no_permission_check => '1', :unknown_user => 'accept')
+        issue = submit_email(
+                  'ticket_by_unknown_user.eml',
+                  :issue => {:project => 'onlinestore'},
+                  :no_permission_check => '1',
+                  :unknown_user => 'accept'
+                )
         assert issue.is_a?(Issue)
         assert issue.author.anonymous?
         assert !issue.project.is_public?
@@ -233,7 +257,11 @@ class MailHandlerTest < ActiveSupport::TestCase
   def test_add_issue_by_created_user
     Setting.default_language = 'en'
     assert_difference 'User.count' do
-      issue = submit_email('ticket_by_unknown_user.eml', :issue => {:project => 'ecookbook'}, :unknown_user => 'create')
+      issue = submit_email(
+                'ticket_by_unknown_user.eml',
+                :issue => {:project => 'ecookbook'},
+                :unknown_user => 'create'
+              )
       assert issue.is_a?(Issue)
       assert issue.author.active?
       assert_equal 'john.doe@somenet.foo', issue.author.mail
@@ -244,8 +272,8 @@ class MailHandlerTest < ActiveSupport::TestCase
       email = ActionMailer::Base.deliveries.first
       assert_not_nil email
       assert email.subject.include?('account activation')
-      login = email.body.match(/\* Login: (.*)$/)[1]
-      password = email.body.match(/\* Password: (.*)$/)[1]
+      login = mail_body(email).match(/\* Login: (.*)$/)[1].strip
+      password = mail_body(email).match(/\* Password: (.*)$/)[1].strip
       assert_equal issue.author, User.try_to_login(login, password)
     end
   end
@@ -256,7 +284,10 @@ class MailHandlerTest < ActiveSupport::TestCase
   end
 
   def test_add_issue_with_invalid_attributes
-    issue = submit_email('ticket_with_invalid_attributes.eml', :allow_override => 'tracker,category,priority')
+    issue = submit_email(
+              'ticket_with_invalid_attributes.eml',
+              :allow_override => 'tracker,category,priority'
+            )
     assert issue.is_a?(Issue)
     assert !issue.new_record?
     issue.reload
@@ -270,7 +301,10 @@ class MailHandlerTest < ActiveSupport::TestCase
 
   def test_add_issue_with_localized_attributes
     User.find_by_mail('jsmith@somenet.foo').update_attribute 'language', 'fr'
-    issue = submit_email('ticket_with_localized_attributes.eml', :allow_override => 'tracker,category,priority')
+    issue = submit_email(
+              'ticket_with_localized_attributes.eml',
+              :allow_override => 'tracker,category,priority'
+            )
     assert issue.is_a?(Issue)
     assert !issue.new_record?
     issue.reload
@@ -284,27 +318,59 @@ class MailHandlerTest < ActiveSupport::TestCase
   end
 
   def test_add_issue_with_japanese_keywords
-    tracker = Tracker.create!(:name => '開発')
+    ja_dev = "\xe9\x96\x8b\xe7\x99\xba"
+    ja_dev.force_encoding('UTF-8') if ja_dev.respond_to?(:force_encoding)
+    tracker = Tracker.create!(:name => ja_dev)
     Project.find(1).trackers << tracker
-    issue = submit_email('japanese_keywords_iso_2022_jp.eml', :issue => {:project => 'ecookbook'}, :allow_override => 'tracker')
+    issue = submit_email(
+              'japanese_keywords_iso_2022_jp.eml',
+              :issue => {:project => 'ecookbook'},
+              :allow_override => 'tracker'
+            )
     assert_kind_of Issue, issue
     assert_equal tracker, issue.tracker
   end
 
   def test_add_issue_from_apple_mail
-    issue = submit_email('apple_mail_with_attachment.eml', :issue => {:project => 'ecookbook'})
+    issue = submit_email(
+              'apple_mail_with_attachment.eml',
+              :issue => {:project => 'ecookbook'}
+            )
     assert_kind_of Issue, issue
     assert_equal 1, issue.attachments.size
 
     attachment = issue.attachments.first
     assert_equal 'paella.jpg', attachment.filename
     assert_equal 10790, attachment.filesize
+    assert File.exist?(attachment.diskfile)
+    assert_equal 10790, File.size(attachment.diskfile)
+    assert_equal 'caaf384198bcbc9563ab5c058acd73cd', attachment.digest
   end
 
   def test_should_ignore_emails_from_emission_address
     Role.anonymous.add_permission!(:add_issues)
     assert_no_difference 'User.count' do
-      assert_equal false, submit_email('ticket_from_emission_address.eml', :issue => {:project => 'ecookbook'}, :unknown_user => 'create')
+      assert_equal false,
+                   submit_email(
+                     'ticket_from_emission_address.eml',
+                     :issue => {:project => 'ecookbook'},
+                     :unknown_user => 'create'
+                   )
+    end
+  end
+
+  def test_should_ignore_auto_replied_emails
+    [
+      "X-Auto-Response-Suppress: OOF",
+      "Auto-Submitted: auto-replied",
+      "Auto-Submitted: Auto-Replied"
+    ].each do |header|
+      raw = IO.read(File.join(FIXTURES_PATH, 'ticket_on_given_project.eml'))
+      raw = header + "\n" + raw
+  
+      assert_no_difference 'Issue.count' do
+        assert_equal false, MailHandler.receive(raw), "email with #{header} header was not ignored"
+      end
     end
   end
 
@@ -374,7 +440,10 @@ class MailHandlerTest < ActiveSupport::TestCase
   end
 
   def test_update_issue_should_not_set_defaults
-    journal = submit_email('ticket_reply.eml', :issue => {:tracker => 'Support request', :priority => 'High'})
+    journal = submit_email(
+                'ticket_reply.eml',
+                :issue => {:tracker => 'Support request', :priority => 'High'}
+              )
     assert journal.is_a?(Journal)
     assert_match /This is reply/, journal.notes
     assert_equal 'Feature request', journal.issue.tracker.name
@@ -493,14 +562,13 @@ class MailHandlerTest < ActiveSupport::TestCase
       ['jsmith@example.net', 'John Smith'] => ['jsmith@example.net', 'John', 'Smith'],
       ['jsmith@example.net', 'John Paul Smith'] => ['jsmith@example.net', 'John', 'Paul Smith'],
       ['jsmith@example.net', 'AVeryLongFirstnameThatExceedsTheMaximumLength Smith'] => ['jsmith@example.net', 'AVeryLongFirstnameThatExceedsT', 'Smith'],
-      ['jsmith@example.net', 'John AVeryLongLastnameThatExceedsTheMaximumLength'] => ['jsmith@example.net', 'John', 'AVeryLongLastnameThatExceedsTh'],
-      ['alongemailaddressthatexceedsloginlength@example.net', 'John Smith'] => ['alongemailaddressthatexceedslo', 'John', 'Smith']
+      ['jsmith@example.net', 'John AVeryLongLastnameThatExceedsTheMaximumLength'] => ['jsmith@example.net', 'John', 'AVeryLongLastnameThatExceedsTh']
     }
 
     to_test.each do |attrs, expected|
       user = MailHandler.new_user_from_attributes(attrs.first, attrs.last)
 
-      assert user.valid?
+      assert user.valid?, user.errors.full_messages.to_s
       assert_equal attrs.first, user.mail
       assert_equal expected[0], user.login
       assert_equal expected[1], user.firstname
@@ -515,14 +583,31 @@ class MailHandlerTest < ActiveSupport::TestCase
       assert user.password.length >= 15
     end
   end
- 
-  def test_new_user_from_attributes_should_use_default_login_if_invalid
-    MailHandler.new_user_from_attributes('alongemailaddressthatexceedsloginlength-1@example.net').save!
 
-    # another long address that would result in duplicate login
-    user = MailHandler.new_user_from_attributes('alongemailaddressthatexceedsloginlength-2@example.net')
+  def test_new_user_from_attributes_should_use_default_login_if_invalid
+    user = MailHandler.new_user_from_attributes('foo+bar@example.net')
     assert user.valid?
     assert user.login =~ /^user[a-f0-9]+$/
+    assert_equal 'foo+bar@example.net', user.mail
+  end
+
+  def test_new_user_with_utf8_encoded_fullname_should_be_decoded
+    assert_difference 'User.count' do
+      issue = submit_email(
+                'fullname_of_sender_as_utf8_encoded.eml',
+                :issue => {:project => 'ecookbook'},
+                :unknown_user => 'create'
+              )
+    end
+
+    user = User.first(:order => 'id DESC')
+    assert_equal "foo@example.org", user.mail
+    str1 = "\xc3\x84\xc3\xa4"
+    str2 = "\xc3\x96\xc3\xb6"
+    str1.force_encoding('UTF-8') if str1.respond_to?(:force_encoding)
+    str2.force_encoding('UTF-8') if str2.respond_to?(:force_encoding)
+    assert_equal str1, user.firstname
+    assert_equal str2, user.lastname
   end
 
   private

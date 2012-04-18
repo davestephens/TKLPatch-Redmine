@@ -1,3 +1,4 @@
+# Bulgarian translation by Ivan Cenov i_cenov@botevgrad.com
 bg:
   # Text direction: Left-to-Right (ltr) or Right-to-Left (rtl)
   direction: ltr
@@ -76,14 +77,14 @@ bg:
 
     human:
       format:
-        precision: 1
         delimiter: ""
+        precision: 1
       storage_units:
         format: "%n %u"
         units:
           byte:
-            one: Byte
-            other: Bytes
+            one: байт
+            other: байта
           kb: "KB"
           mb: "MB"
           gb: "GB"
@@ -162,15 +163,17 @@ bg:
   notice_feeds_access_key_reseted: Вашия ключ за RSS достъп беше променен.
   notice_api_access_key_reseted: Вашият API ключ за достъп беше изчистен.
   notice_failed_to_save_issues: "Неуспешен запис на %{count} задачи от %{total} избрани: %{ids}."
+  notice_failed_to_save_time_entries: "Невъзможност за запис на %{count} записа за използвано време от %{total} избрани: %{ids}."
   notice_failed_to_save_members: "Невъзможност за запис на член(ове): %{errors}."
   notice_no_issue_selected: "Няма избрани задачи."
   notice_account_pending: "Профилът Ви е създаден и очаква одобрение от администратор."
   notice_default_data_loaded: Примерната информация е заредена успешно.
   notice_unable_delete_version: Невъзможност за изтриване на версия
-  notice_unable_delete_time_entry: Невъзможност за изтриване на запис на time log.
+  notice_unable_delete_time_entry: Невъзможност за изтриване на запис за използвано време.
   notice_issue_done_ratios_updated: Обновен процент на завършените задачи.
   notice_gantt_chart_truncated: Мрежовият график е съкратен, понеже броят на обектите, които могат да бъдат показани е твърде голям (%{max})
   notice_issue_successful_create: Задача %{id} е създадена.
+  notice_issue_update_conflict: Задачата е била променена от друг потребител, докато вие сте я редактирали.
 
   error_can_t_load_default_data: "Грешка при зареждане на примерната информация: %{value}"
   error_scm_not_found: Несъществуващ обект в хранилището.
@@ -317,6 +320,9 @@ bg:
   field_root_directory: Коренна директория (папка)
   field_cvsroot: CVSROOT
   field_cvs_module: Модул
+  field_repository_is_default: Главно хранилище
+  field_multiple: Избор на повече от една стойност
+  field_ldap_filter: LDAP филтър
 
   setting_app_title: Заглавие
   setting_app_subtitle: Описание
@@ -377,6 +383,7 @@ bg:
   setting_gantt_items_limit: Максимален брой обекти, които да се показват в мрежов график
   setting_issue_group_assignment: Разрешено назначаването на задачи на групи
   setting_default_issue_start_date_to_creation_date: Начална дата на новите задачи по подразбиране да бъде днешната дата
+  setting_commit_cross_project_ref: Отбелязване и приключване на задачи от други проекти, несвързани с конкретното хранилище
 
   permission_add_project: Създаване на проект
   permission_add_subprojects: Създаване на подпроекти
@@ -435,6 +442,7 @@ bg:
   permission_delete_own_messages: Изтриване на собствени съобщения
   permission_export_wiki_pages: Експорт на wiki страници
   permission_manage_subtasks: Управление на подзадачите
+  permission_manage_related_issues: Управление на връзките между задачи и ревизии
 
   project_module_issue_tracking: Тракинг
   project_module_time_tracking: Отделяне на време
@@ -585,6 +593,10 @@ bg:
     zero:  0 затворени
     one:   1 затворена
     other: "%{count} затворени"
+  label_x_issues:
+    zero:  0 задачи
+    one:   1 задача
+    other: "%{count} задачи"
   label_total: Общо
   label_permissions: Права
   label_current_status: Текущо състояние
@@ -608,9 +620,9 @@ bg:
   label_comment: Коментар
   label_comment_plural: Коментари
   label_x_comments:
-    zero: 0 коментари
+    zero: 0 коментара
     one: 1 коментар
-    other: "%{count} коментари"
+    other: "%{count} коментара"
   label_comment_add: Добавяне на коментар
   label_comment_added: Добавен коментар
   label_comment_delete: Изтриване на коментари
@@ -645,6 +657,7 @@ bg:
   label_not_contains: не съдържа
   label_day_plural: дни
   label_repository: Хранилище
+  label_repository_new: Ново хранилище
   label_repository_plural: Хранилища
   label_browse: Разглеждане
   label_modification: "%{count} промяна"
@@ -829,6 +842,10 @@ bg:
   label_parent_revision: Ревизия родител
   label_child_revision: Ревизия наследник
   label_export_options: "%{export_format} опции за експорт"
+  label_copy_attachments: Копиране на прикачените файлове
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: Завършени версии
+  label_search_for_watchers: Търсене на потребители за наблюдатели
 
   button_login: Вход
   button_submit: Прикачване
@@ -905,7 +922,7 @@ bg:
   text_tip_issue_begin_day: задача, започваща този ден
   text_tip_issue_end_day: задача, завършваща този ден
   text_tip_issue_begin_end_day: задача, започваща и завършваща този ден
-  text_project_identifier_info: 'Позволени са малки букви (a-z), цифри и тирета.<br />Невъзможна промяна след запис.'
+  text_project_identifier_info: 'Позволени са малки букви (a-z), цифри, тирета и _.<br />Промяна след създаването му не е възможна.'
   text_caracters_maximum: "До %{count} символа."
   text_caracters_minimum: "Минимум %{count} символа."
   text_length_between: "От %{min} до %{max} символа."
@@ -959,6 +976,9 @@ bg:
   text_scm_command_version: Версия
   text_scm_config: Можете да конфигурирате SCM командите в config/configuration.yml. За да активирате промените, рестартирайте Redmine.
   text_scm_command_not_available: SCM командата не е налична или достъпна. Проверете конфигурацията в административния панел.
+  text_issue_conflict_resolution_overwrite: Прилагане на моите промени (предишните коментари ще бъдат запазени, но някои други промени може да бъдат презаписани)
+  text_issue_conflict_resolution_add_notes: Добавяне на моите коментари и отхвърляне на другите мои промени
+  text_issue_conflict_resolution_cancel: Отхвърляне на всички мои промени и презареждане на %{link}
 
   default_role_manager: Мениджър
   default_role_developer: Разработчик

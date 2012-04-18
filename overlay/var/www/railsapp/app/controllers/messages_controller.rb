@@ -22,9 +22,6 @@ class MessagesController < ApplicationController
   before_filter :find_message, :except => [:new, :preview]
   before_filter :authorize, :except => [:preview, :edit, :destroy]
 
-  verify :method => :post, :only => [ :reply, :destroy ], :redirect_to => { :action => :show }
-  verify :xhr => true, :only => :quote
-
   helper :watchers
   helper :attachments
   include AttachmentsHelper
@@ -57,11 +54,13 @@ class MessagesController < ApplicationController
     @message.author = User.current
     @message.board = @board
     @message.safe_attributes = params[:message]
-    if request.post? && @message.save
-      call_hook(:controller_messages_new_after_save, { :params => params, :message => @message})
-      attachments = Attachment.attach_files(@message, params[:attachments])
-      render_attachment_warning_if_needed(@message)
-      redirect_to :action => 'show', :id => @message
+    if request.post?
+      @message.save_attachments(params[:attachments])
+      if @message.save
+        call_hook(:controller_messages_new_after_save, { :params => params, :message => @message})
+        render_attachment_warning_if_needed(@message)
+        redirect_to :action => 'show', :id => @message
+      end
     end
   end
 
