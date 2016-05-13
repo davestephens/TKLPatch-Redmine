@@ -17,7 +17,7 @@
         :start => ((label_tag "from", l(:description_date_from), :class => "hidden-for-sighted") + 
             text_field_tag('from', @from, :size => 10, :disabled => !@free_period) + calendar_for('from')),
         :end => ((label_tag "to", l(:description_date_to), :class => "hidden-for-sighted") +
-            text_field_tag('to', @to, :size => 10, :disabled => !@free_period) + calendar_for('to'))) %>
+            text_field_tag('to', @to, :size => 10, :disabled => !@free_period) + calendar_for('to'))).html_safe %>
 </span>
 </p>
 </div>
@@ -32,7 +32,7 @@
 <ul>
     <li><%= link_to(l(:label_details), url_params.merge({:controller => 'timelog', :action => 'index', :project_id => @project, :issue_id => @issue }),
                                        :class => (@controller.action_name == 'index' ? 'selected' : nil)) %></li>
-    <li><%= link_to(l(:label_report), url_params.merge({:controller => 'time_entry_reports', :action => 'report', :project_id => @project, :issue_id => @issue}),
+    <li><%= link_to(l(:label_report), url_params.merge({:controller => 'timelog', :action => 'report', :project_id => @project, :issue_id => @issue}),
                                        :class => (@controller.action_name == 'report' ? 'selected' : nil)) %></li>
 </ul>
 </div>

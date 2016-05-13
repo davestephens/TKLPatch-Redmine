@@ -687,7 +687,6 @@ pt:
   text_tip_issue_begin_day: tarefa a começar neste dia
   text_tip_issue_end_day: tarefa a acabar neste dia
   text_tip_issue_begin_end_day: tarefa a começar e acabar neste dia
-  text_project_identifier_info: 'Apenas são permitidos letras minúsculas (a-z), números e hífens.<br />Uma vez guardado, o identificador não poderá ser alterado.'
   text_caracters_maximum: "máximo %{count} caracteres."
   text_caracters_minimum: "Deve ter pelo menos %{count} caracteres."
   text_length_between: "Deve ter entre %{min} e %{max} caracteres."
@@ -1011,3 +1010,23 @@ pt:
   button_export: Export
   label_export_options: "%{export_format} export options"
   error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})
+  notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
+  label_x_issues:
+    zero:  0 tarefa
+    one:   1 tarefa
+    other: "%{count} tarefas"
+  label_repository_new: New repository
+  field_repository_is_default: Main repository
+  label_copy_attachments: Copy attachments
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: Completed versions
+  text_project_identifier_info: Only lower case letters (a-z), numbers, dashes and underscores are allowed.<br />Once saved, the identifier cannot be changed.
+  field_multiple: Multiple values
+  setting_commit_cross_project_ref: Allow issues of all the other projects to be referenced and fixed
+  text_issue_conflict_resolution_add_notes: Add my notes and discard my other changes
+  text_issue_conflict_resolution_overwrite: Apply my changes anyway (previous notes will be kept but some changes may be overwritten)
+  notice_issue_update_conflict: The issue has been updated by an other user while you were editing it.
+  text_issue_conflict_resolution_cancel: Discard all my changes and redisplay %{link}
+  permission_manage_related_issues: Manage related issues
+  field_ldap_filter: LDAP filter
+  label_search_for_watchers: Search for watchers to add

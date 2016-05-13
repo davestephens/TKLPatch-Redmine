@@ -20,35 +20,65 @@ require File.expand_path('../../test_helper', __FILE__)
 class RepositoryMercurialTest < ActiveSupport::TestCase
   fixtures :projects
 
+  include Redmine::I18n
+
   REPOSITORY_PATH = Rails.root.join('tmp/test/mercurial_repository').to_s
   NUM_REV = 32
   CHAR_1_HEX = "\xc3\x9c"
 
+  def setup
+    @project    = Project.find(3)
+    @repository = Repository::Mercurial.create(
+                      :project => @project,
+                      :url     => REPOSITORY_PATH,
+                      :path_encoding => 'ISO-8859-1'
+                      )
+    assert @repository
+    @char_1        = CHAR_1_HEX.dup
+    @tag_char_1    = "tag-#{CHAR_1_HEX}-00"
+    @branch_char_0 = "branch-#{CHAR_1_HEX}-00"
+    @branch_char_1 = "branch-#{CHAR_1_HEX}-01"
+    if @char_1.respond_to?(:force_encoding)
+      @char_1.force_encoding('UTF-8')
+      @tag_char_1.force_encoding('UTF-8')
+      @branch_char_0.force_encoding('UTF-8')
+      @branch_char_1.force_encoding('UTF-8')
+    end
+  end
+
+
+  def test_blank_path_to_repository_error_message
+    set_language_if_valid 'en'
+    repo = Repository::Mercurial.new(
+                          :project      => @project,
+                          :identifier   => 'test'
+                        )
+    assert !repo.save
+    assert_include "Path to repository can't be blank",
+                   repo.errors.full_messages
+  end
+
+  def test_blank_path_to_repository_error_message_fr
+    set_language_if_valid 'fr'
+    str = "Chemin du d\xc3\xa9p\xc3\xb4t doit \xc3\xaatre renseign\xc3\xa9(e)"
+    str.force_encoding('UTF-8') if str.respond_to?(:force_encoding)
+    repo = Repository::Mercurial.new(
+                          :project      => @project,
+                          :url          => "",
+                          :identifier   => 'test',
+                          :path_encoding => ''
+                        )
+    assert !repo.save
+    assert_include str, repo.errors.full_messages
+  end
+
   if File.directory?(REPOSITORY_PATH)
-    def setup
+    def test_scm_available
       klass = Repository::Mercurial
       assert_equal "Mercurial", klass.scm_name
       assert klass.scm_adapter_class
       assert_not_equal "", klass.scm_command
       assert_equal true, klass.scm_available
-
-      @project    = Project.find(3)
-      @repository = Repository::Mercurial.create(
-                      :project => @project,
-                      :url     => REPOSITORY_PATH,
-                      :path_encoding => 'ISO-8859-1'
-                      )
-      assert @repository
-      @char_1        = CHAR_1_HEX.dup
-      @tag_char_1    = "tag-#{CHAR_1_HEX}-00"
-      @branch_char_0 = "branch-#{CHAR_1_HEX}-00"
-      @branch_char_1 = "branch-#{CHAR_1_HEX}-01"
-      if @char_1.respond_to?(:force_encoding)
-        @char_1.force_encoding('UTF-8')
-        @tag_char_1.force_encoding('UTF-8')
-        @branch_char_0.force_encoding('UTF-8')
-        @branch_char_1.force_encoding('UTF-8')
-      end
     end
 
     def test_fetch_changesets_from_scratch

@@ -33,7 +33,8 @@ class VersionTest < ActiveSupport::TestCase
   def test_invalid_effective_date_validation
     v = Version.new(:project => Project.find(1), :name => '1.1', :effective_date => '99999-01-01')
     assert !v.save
-    assert_equal I18n.translate('activerecord.errors.messages.not_a_date'), v.errors.on(:effective_date)
+    assert_include I18n.translate('activerecord.errors.messages.not_a_date'),
+                   v.errors[:effective_date]
   end
 
   def test_progress_should_be_0_with_no_assigned_issues
@@ -109,10 +110,10 @@ class VersionTest < ActiveSupport::TestCase
   context "#behind_schedule?" do
     setup do
       ProjectCustomField.destroy_all # Custom values are a mess to isolate in tests
-      @project = Project.generate!(:identifier => 'test0')
-      @project.trackers << Tracker.generate!
+      @project = Project.create!(:name => 'test0', :identifier => 'test0')
+      @project.trackers << Tracker.create!(:name => 'track')
 
-      @version = Version.generate!(:project => @project, :effective_date => nil)
+      @version = Version.create!(:project => @project, :effective_date => nil, :name => 'version')
     end
 
     should "be false if there are no issues assigned" do
@@ -126,33 +127,26 @@ class VersionTest < ActiveSupport::TestCase
 
     should "be false if all of the issues are ahead of schedule" do
       @version.update_attribute(:effective_date, 7.days.from_now.to_date)
-      @version.fixed_issues = [
-                               Issue.generate_for_project!(@project, :start_date => 7.days.ago, :done_ratio => 60), # 14 day span, 60% done, 50% time left
-                               Issue.generate_for_project!(@project, :start_date => 7.days.ago, :done_ratio => 60) # 14 day span, 60% done, 50% time left
-                              ]
+      add_issue(@version, :start_date => 7.days.ago, :done_ratio => 60) # 14 day span, 60% done, 50% time left
+      add_issue(@version, :start_date => 7.days.ago, :done_ratio => 60) # 14 day span, 60% done, 50% time left
       assert_equal 60, @version.completed_pourcent
       assert_equal false, @version.behind_schedule?
     end
 
     should "be true if any of the issues are behind schedule" do
       @version.update_attribute(:effective_date, 7.days.from_now.to_date)
-      @version.fixed_issues = [
-                               Issue.generate_for_project!(@project, :start_date => 7.days.ago, :done_ratio => 60), # 14 day span, 60% done, 50% time left
-                               Issue.generate_for_project!(@project, :start_date => 7.days.ago, :done_ratio => 20) # 14 day span, 20% done, 50% time left
-                              ]
+      add_issue(@version, :start_date => 7.days.ago, :done_ratio => 60) # 14 day span, 60% done, 50% time left
+      add_issue(@version, :start_date => 7.days.ago, :done_ratio => 20) # 14 day span, 20% done, 50% time left
       assert_equal 40, @version.completed_pourcent
       assert_equal true, @version.behind_schedule?
     end
 
     should "be false if all of the issues are complete" do
       @version.update_attribute(:effective_date, 7.days.from_now.to_date)
-      @version.fixed_issues = [
-                               Issue.generate_for_project!(@project, :start_date => 14.days.ago, :done_ratio => 100, :status => IssueStatus.find(5)), # 7 day span
-                               Issue.generate_for_project!(@project, :start_date => 14.days.ago, :done_ratio => 100, :status => IssueStatus.find(5)) # 7 day span
-                              ]
+      add_issue(@version, :start_date => 14.days.ago, :done_ratio => 100, :status => IssueStatus.find(5)) # 7 day span
+      add_issue(@version, :start_date => 14.days.ago, :done_ratio => 100, :status => IssueStatus.find(5)) # 7 day span
       assert_equal 100, @version.completed_pourcent
       assert_equal false, @version.behind_schedule?
-
     end
   end
 

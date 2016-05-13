@@ -25,6 +25,7 @@ class News < ActiveRecord::Base
   validates_length_of :title, :maximum => 60
   validates_length_of :summary, :maximum => 255
 
+  acts_as_attachable :delete_permission => :manage_news
   acts_as_searchable :columns => ['title', 'summary', "#{table_name}.description"], :include => :project
   acts_as_event :url => Proc.new {|o| {:controller => 'news', :action => 'show', :id => o.id}}
   acts_as_activity_provider :find_options => {:include => [:project, :author]},
@@ -44,9 +45,17 @@ class News < ActiveRecord::Base
     !user.nil? && user.allowed_to?(:view_news, project)
   end
 
+  # Returns true if the news can be commented by user
+  def commentable?(user=User.current)
+    user.allowed_to?(:comment_news, project)
+  end
+
   # returns latest news for projects visible by user
   def self.latest(user = User.current, count = 5)
-    find(:all, :limit => count, :conditions => Project.allowed_to_condition(user, :view_news), :include => [ :author, :project ], :order => "#{News.table_name}.created_on DESC")	
+    find(:all, :limit => count,
+         :conditions => Project.allowed_to_condition(user, :view_news),
+         :include => [ :author, :project ],
+         :order => "#{News.table_name}.created_on DESC")	
   end
 
   private

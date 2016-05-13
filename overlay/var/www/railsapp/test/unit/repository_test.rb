@@ -34,8 +34,34 @@ class RepositoryTest < ActiveSupport::TestCase
            :roles,
            :enumerations
 
+  include Redmine::I18n
+
   def setup
     @repository = Project.find(1).repository
+  end
+
+  def test_blank_log_encoding_error_message
+    set_language_if_valid 'en'
+    repo = Repository::Bazaar.new(
+                        :project      => Project.find(3),
+                        :url          => "/test",
+                        :log_encoding => ''
+                      )
+    assert !repo.save
+    assert_include "Commit messages encoding can't be blank",
+                   repo.errors.full_messages
+  end
+
+  def test_blank_log_encoding_error_message_fr
+    set_language_if_valid 'fr'
+    str = "Encodage des messages de commit doit \xc3\xaatre renseign\xc3\xa9(e)"
+    str.force_encoding('UTF-8') if str.respond_to?(:force_encoding)
+    repo = Repository::Bazaar.new(
+                        :project      => Project.find(3),
+                        :url          => "/test"
+                      )
+    assert !repo.save
+    assert_include str, repo.errors.full_messages
   end
 
   def test_create
@@ -50,14 +76,53 @@ class RepositoryTest < ActiveSupport::TestCase
     assert_equal repository, project.repository
   end
 
+  def test_first_repository_should_be_set_as_default
+    repository1 = Repository::Subversion.new(
+                      :project => Project.find(3),
+                      :identifier => 'svn1',
+                      :url => 'file:///svn1'
+                    )
+    assert repository1.save
+    assert repository1.is_default?
+
+    repository2 = Repository::Subversion.new(
+                      :project => Project.find(3),
+                      :identifier => 'svn2',
+                      :url => 'file:///svn2'
+                    )
+    assert repository2.save
+    assert !repository2.is_default?
+
+    assert_equal repository1, Project.find(3).repository
+    assert_equal [repository1, repository2], Project.find(3).repositories.sort
+  end
+
   def test_destroy
     changesets = Changeset.count(:all, :conditions => "repository_id = 10")
     changes = Change.count(:all, :conditions => "repository_id = 10",
-                           :include => :changeset)
+                           :joins => :changeset)
     assert_difference 'Changeset.count', -changesets do
       assert_difference 'Change.count', -changes do
         Repository.find(10).destroy
       end
+    end
+  end
+
+  def test_destroy_should_delete_parents_associations
+    changeset = Changeset.find(102)
+    changeset.parents = Changeset.find_all_by_id([100, 101])
+
+    assert_difference 'Changeset.connection.select_all("select * from changeset_parents").size', -2 do
+      Repository.find(10).destroy
+    end
+  end
+
+  def test_destroy_should_delete_issues_associations
+    changeset = Changeset.find(102)
+    changeset.issues = Issue.find_all_by_id([1, 2])
+
+    assert_difference 'Changeset.connection.select_all("select * from changesets_issues").size', -2 do
+      Repository.find(10).destroy
     end
   end
 
@@ -67,8 +132,8 @@ class RepositoryTest < ActiveSupport::TestCase
       repository = Repository::Subversion.new(
                       :project => Project.find(3), :url => "svn://localhost")
       assert !repository.save
-      assert_equal I18n.translate('activerecord.errors.messages.invalid'),
-                                  repository.errors.on(:type)
+      assert_include I18n.translate('activerecord.errors.messages.invalid'),
+                     repository.errors[:type]
     end
   end
 
@@ -108,11 +173,11 @@ class RepositoryTest < ActiveSupport::TestCase
     # 2 email notifications
     assert_equal 2, ActionMailer::Base.deliveries.size
     mail = ActionMailer::Base.deliveries.first
-    assert_kind_of TMail::Mail, mail
+    assert_not_nil mail
     assert mail.subject.starts_with?(
         "[#{fixed_issue.project.name} - #{fixed_issue.tracker.name} ##{fixed_issue.id}]")
-    assert mail.body.include?(
-        "Status changed from #{old_status} to #{fixed_issue.status}")
+    assert_mail_body_match(
+        "Status changed from #{old_status} to #{fixed_issue.status}", mail)
 
     # ignoring commits referencing an issue of another project
     assert_equal [], Issue.find(4).changesets

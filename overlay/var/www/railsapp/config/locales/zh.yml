@@ -64,8 +64,8 @@ zh:
         one: "大约一年"
         other: "大约 %{count} 年"
       over_x_years:
-        one: "一年以上"
-        other: "%{count} 年以上"
+        one: "超过一年"
+        other: "超过 %{count} 年"
       almost_x_years:
         one:   "将近 1 年"
         other: "将近 %{count} 年"
@@ -866,7 +866,6 @@ zh:
   text_tip_issue_begin_day: 今天开始的任务
   text_tip_issue_end_day: 今天结束的任务
   text_tip_issue_begin_end_day: 今天开始并结束的任务
-  text_project_identifier_info: '只允许使用小写字母（a-z），数字和连字符（-）。<br />请注意，标识符保存后将不可修改。'
   text_caracters_maximum: "最多 %{count} 个字符。"
   text_caracters_minimum: "至少需要 %{count} 个字符。"
   text_length_between: "长度必须在 %{min} 到 %{max} 个字符之间。"
@@ -1002,9 +1001,29 @@ zh:
   label_child_revision: 子修订
   error_scm_annotate_big_text_file: 输入文本内容超长，无法输入。
   setting_default_issue_start_date_to_creation_date: 使用当前日期作为新问题的开始日期
-  button_edit_section: Edit this section
-  setting_repositories_encodings: Attachments and repositories encodings
-  description_all_columns: All Columns
-  button_export: Export
-  label_export_options: "%{export_format} export options"
-  error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})
+  button_edit_section: 编辑此区域
+  setting_repositories_encodings: 附件和版本库编码
+  description_all_columns: 所有列
+  button_export: 导出
+  label_export_options: "%{export_format} 导出选项"
+  error_attachment_too_big: 该文件无法上传。超过文件大小限制 (%{max_size})
+  notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
+  label_x_issues:
+    zero:  0 问题
+    one:   1 问题
+    other: "%{count} 问题"
+  label_repository_new: New repository
+  field_repository_is_default: Main repository
+  label_copy_attachments: Copy attachments
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: Completed versions
+  text_project_identifier_info: Only lower case letters (a-z), numbers, dashes and underscores are allowed.<br />Once saved, the identifier cannot be changed.
+  field_multiple: Multiple values
+  setting_commit_cross_project_ref: Allow issues of all the other projects to be referenced and fixed
+  text_issue_conflict_resolution_add_notes: Add my notes and discard my other changes
+  text_issue_conflict_resolution_overwrite: Apply my changes anyway (previous notes will be kept but some changes may be overwritten)
+  notice_issue_update_conflict: The issue has been updated by an other user while you were editing it.
+  text_issue_conflict_resolution_cancel: Discard all my changes and redisplay %{link}
+  permission_manage_related_issues: Manage related issues
+  field_ldap_filter: LDAP filter
+  label_search_for_watchers: Search for watchers to add

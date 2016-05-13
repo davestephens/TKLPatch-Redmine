@@ -39,7 +39,8 @@ class Document < ActiveRecord::Base
     !user.nil? && user.allowed_to?(:view_documents, project)
   end
 
-  def after_initialize
+  def initialize(attributes=nil, *args)
+    super
     if new_record?
       self.category ||= DocumentCategory.default
     end
@@ -47,7 +48,7 @@ class Document < ActiveRecord::Base
 
   def updated_on
     unless @updated_on
-      a = attachments.find(:first, :order => 'created_on DESC')
+      a = attachments.last
       @updated_on = (a && a.created_on) || created_on
     end
     @updated_on

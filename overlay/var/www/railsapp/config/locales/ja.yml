@@ -190,7 +190,7 @@ ja:
   notice_email_error: "メール送信中にエラーが発生しました (%{value})"
   notice_feeds_access_key_reseted: RSSアクセスキーを初期化しました。
   notice_api_access_key_reseted: APIアクセスキーを初期化しました。
-  notice_failed_to_save_issues: "%{total}件のうち%{count}件のチケットが保存できませんでした: %{ids}."
+  notice_failed_to_save_issues: "全%{total}件中%{count}件のチケットが保存できませんでした: %{ids}."
   notice_failed_to_save_members: "メンバーの保存に失敗しました: %{errors}."
   notice_no_issue_selected: "チケットが選択されていません! 更新対象のチケットを選択してください。"
   notice_account_pending: アカウントは作成済みで、管理者の承認待ちです。
@@ -421,9 +421,9 @@ ja:
   permission_save_queries: クエリの保存
   permission_view_gantt: ガントチャートの閲覧
   permission_view_calendar: カレンダーの閲覧
-  permission_view_issue_watchers: ウォッチ一覧の閲覧
-  permission_add_issue_watchers: ウォッチの追加
-  permission_delete_issue_watchers: ウォッチの削除
+  permission_view_issue_watchers: ウォッチャー一覧の閲覧
+  permission_add_issue_watchers: ウォッチャーの追加
+  permission_delete_issue_watchers: ウォッチャーの削除
   permission_log_time: 変更履歴の記入
   permission_view_time_entries: 変更履歴の閲覧
   permission_edit_time_entries: 変更履歴の編集
@@ -911,7 +911,6 @@ ja:
   text_tip_issue_begin_day: この日に開始するタスク
   text_tip_issue_end_day: この日に終了するタスク
   text_tip_issue_begin_end_day: この日のうちに開始して終了するタスク
-  text_project_identifier_info: '英小文字(a-z)と数字とダッシュ(-)が使えます。<br />一度保存すると、識別子は変更できません。'
   text_caracters_maximum: "最大%{count}文字です。"
   text_caracters_minimum: "最低%{count}文字の長さが必要です"
   text_length_between: "長さは%{min}から%{max}文字までです。"
@@ -1036,3 +1035,23 @@ ja:
   button_export: エクスポート
   label_export_options: "%{export_format} エクスポート設定"
   error_attachment_too_big: このファイルはアップロードできません。添付ファイルサイズの上限(%{max_size})を超えています。
+  notice_failed_to_save_time_entries: "全%{total}件中%{count}件の作業時間が保存できませんでした: %{ids}."
+  label_x_issues:
+    zero:  0 チケット
+    one:   1 チケット
+    other: "%{count} チケット"
+  label_repository_new: 新しいリポジトリ
+  field_repository_is_default: メインリポジトリ
+  label_copy_attachments: 添付ファイルをコピー
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: 完了したバージョン
+  text_project_identifier_info: アルファベット小文字(a-z)・数字・ハイフン・アンダースコアが使えます。<br />識別子は後で変更することはできません。
+  field_multiple: 複数選択可
+  setting_commit_cross_project_ref: 異なるプロジェクトのチケットの参照/修正を許可
+  text_issue_conflict_resolution_add_notes: 自分の編集内容を破棄し注記のみ追加
+  text_issue_conflict_resolution_overwrite: 自分の編集内容の保存を強行 (他のユーザの更新内容は注記を除き上書きされます)
+  notice_issue_update_conflict: このチケットを編集中に他のユーザが更新しました。
+  text_issue_conflict_resolution_cancel: 自分の編集内容を破棄し %{link} を再表示
+  permission_manage_related_issues: 関連するチケットの管理
+  field_ldap_filter: LDAPフィルタ
+  label_search_for_watchers: ウォッチャーを検索して追加

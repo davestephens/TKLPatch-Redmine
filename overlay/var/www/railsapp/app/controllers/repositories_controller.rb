@@ -1,5 +1,5 @@
 # Redmine - project management software
-# Copyright (C) 2006-2011  Jean-Philippe Lang
+# Copyright (C) 2006-2012  Jean-Philippe Lang
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -24,44 +24,46 @@ class InvalidRevisionParam < Exception; end
 
 class RepositoriesController < ApplicationController
   menu_item :repository
-  menu_item :settings, :only => :edit
+  menu_item :settings, :only => [:new, :create, :edit, :update, :destroy, :committers]
   default_search_scope :changesets
 
-  before_filter :find_repository, :except => :edit
-  before_filter :find_project, :only => :edit
+  before_filter :find_project_by_project_id, :only => [:new, :create]
+  before_filter :find_repository, :only => [:edit, :update, :destroy, :committers]
+  before_filter :find_project_repository, :except => [:new, :create, :edit, :update, :destroy, :committers]
+  before_filter :find_changeset, :only => [:revision, :add_related_issue, :remove_related_issue]
   before_filter :authorize
   accept_rss_auth :revisions
 
   rescue_from Redmine::Scm::Adapters::CommandFailed, :with => :show_error_command_failed
 
+  def new
+    scm = params[:repository_scm] || (Redmine::Scm::Base.all & Setting.enabled_scm).first
+    @repository = Repository.factory(scm)
+    @repository.is_default = @project.repository.nil?
+    @repository.project = @project
+    render :layout => !request.xhr?
+  end
+
+  def create
+    @repository = Repository.factory(params[:repository_scm], params[:repository])
+    @repository.project = @project
+    if request.post? && @repository.save
+      redirect_to settings_project_path(@project, :tab => 'repositories')
+    else
+      render :action => 'new'
+    end
+  end
+
   def edit
-    @repository = @project.repository
-    if !@repository && !params[:repository_scm].blank?
-      @repository = Repository.factory(params[:repository_scm])
-      @repository.project = @project if @repository
-    end
-    if request.post? && @repository
-      p1 = params[:repository]
-      p       = {}
-      p_extra = {}
-      p1.each do |k, v|
-        if k =~ /^extra_/
-          p_extra[k] = v
-        else
-          p[k] = v
-        end
-      end
-      @repository.attributes = p
-      @repository.merge_extra_info(p_extra)
-      @repository.save
-    end
-    render(:update) do |page|
-      page.replace_html "tab-content-repository",
-                        :partial => 'projects/settings/repository'
-      if @repository && !@project.repository
-        @project.reload # needed to reload association
-        page.replace_html "main-menu", render_main_menu(@project)
-      end
+  end
+
+  def update
+    @repository.attributes = params[:repository]
+    @repository.project = @project
+    if request.put? && @repository.save
+      redirect_to settings_project_path(@project, :tab => 'repositories')
+    else
+      render :action => 'edit'
     end
   end
 
@@ -76,16 +78,13 @@ class RepositoriesController < ApplicationController
       # Build a hash with repository usernames as keys and corresponding user ids as values
       @repository.committer_ids = params[:committers].values.inject({}) {|h, c| h[c.first] = c.last; h}
       flash[:notice] = l(:notice_successful_update)
-      redirect_to :action => 'committers', :id => @project
+      redirect_to settings_project_path(@project, :tab => 'repositories')
     end
   end
 
   def destroy
-    @repository.destroy
-    redirect_to :controller => 'projects',
-                :action     => 'settings',
-                :id         => @project,
-                :tab        => 'repository'
+    @repository.destroy if request.delete?
+    redirect_to settings_project_path(@project, :tab => 'repositories')
   end
 
   def show
@@ -99,6 +98,7 @@ class RepositoriesController < ApplicationController
       (show_error_not_found; return) unless @entries
       @changesets = @repository.latest_changesets(@path, @rev)
       @properties = @repository.properties(@path, @rev)
+      @repositories = @project.repositories
       render :action => 'show'
     end
   end
@@ -186,16 +186,56 @@ class RepositoriesController < ApplicationController
   end
 
   def revision
-    raise ChangesetNotFound if @rev.blank?
-    @changeset = @repository.find_changeset_by_name(@rev)
-    raise ChangesetNotFound unless @changeset
-
     respond_to do |format|
       format.html
       format.js {render :layout => false}
     end
-  rescue ChangesetNotFound
-    show_error_not_found
+  end
+
+  # Adds a related issue to a changeset
+  # POST /projects/:project_id/repository/(:repository_id/)revisions/:rev/issues
+  def add_related_issue
+    @issue = @changeset.find_referenced_issue_by_id(params[:issue_id])
+    if @issue && (!@issue.visible? || @changeset.issues.include?(@issue))
+      @issue = nil
+    end
+
+    if @issue
+      @changeset.issues << @issue
+      respond_to do |format|
+        format.js {
+          render :update do |page|
+            page.replace_html "related-issues", :partial => "related_issues"
+            page.visual_effect :highlight, "related-issue-#{@issue.id}"
+          end
+        }
+      end
+    else
+      respond_to do |format|
+        format.js {
+          render :update do |page|
+            page.alert(l(:label_issue) + ' ' + l('activerecord.errors.messages.invalid'))
+          end
+        }
+      end
+    end
+  end
+
+  # Removes a related issue from a changeset
+  # DELETE /projects/:project_id/repository/(:repository_id/)revisions/:rev/issues/:issue_id
+  def remove_related_issue
+    @issue = Issue.visible.find_by_id(params[:issue_id])
+    if @issue 
+      @changeset.issues.delete(@issue)
+    end
+
+    respond_to do |format|
+      format.js {
+        render :update do |page|
+          page.remove "related-issue-#{@issue.id}"
+        end if @issue
+      }
+    end
   end
 
   def diff
@@ -250,11 +290,22 @@ class RepositoriesController < ApplicationController
 
   private
 
+  def find_repository
+    @repository = Repository.find(params[:id])
+    @project = @repository.project
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
   REV_PARAM_RE = %r{\A[a-f0-9]*\Z}i
 
-  def find_repository
+  def find_project_repository
     @project = Project.find(params[:id])
-    @repository = @project.repository
+    if params[:repository_id].present?
+      @repository = @project.repositories.find_by_identifier_param(params[:repository_id])
+    else
+      @repository = @project.repository
+    end
     (render_404; return false) unless @repository
     @path = params[:path].join('/') unless params[:path].nil?
     @path ||= ''
@@ -270,6 +321,13 @@ class RepositoriesController < ApplicationController
     render_404
   rescue InvalidRevisionParam
     show_error_not_found
+  end
+
+  def find_changeset
+    if @rev.present?
+      @changeset = @repository.find_changeset_by_name(@rev)
+    end
+    show_error_not_found unless @changeset
   end
 
   def show_error_not_found
@@ -366,18 +424,3 @@ class RepositoriesController < ApplicationController
   end
 end
 
-class Date
-  def months_ago(date = Date.today)
-    (date.year - self.year)*12 + (date.month - self.month)
-  end
-
-  def weeks_ago(date = Date.today)
-    (date.year - self.year)*52 + (date.cweek - self.cweek)
-  end
-end
-
-class String
-  def with_leading_slash
-    starts_with?('/') ? self : "/#{self}"
-  end
-end

@@ -57,7 +57,7 @@ class QueryCustomFieldColumn < QueryColumn
   def initialize(custom_field)
     self.name = "cf_#{custom_field.id}".to_sym
     self.sortable = custom_field.order_statement || false
-    if %w(list date bool int).include?(custom_field.field_format)
+    if %w(list date bool int).include?(custom_field.field_format) && !custom_field.multiple?
       self.groupable = custom_field.order_statement
     end
     self.groupable ||= false
@@ -73,8 +73,8 @@ class QueryCustomFieldColumn < QueryColumn
   end
 
   def value(issue)
-    cv = issue.custom_values.detect {|v| v.custom_field_id == @cf.id}
-    cv && @cf.cast_value(cv.value)
+    cv = issue.custom_values.select {|v| v.custom_field_id == @cf.id}.collect {|v| @cf.cast_value(v.value)}
+    cv.size > 1 ? cv : cv.first
   end
 
   def css_classes
@@ -94,7 +94,7 @@ class Query < ActiveRecord::Base
 
   attr_protected :project_id, :user_id
 
-  validates_presence_of :name, :on => :save
+  validates_presence_of :name
   validates_length_of :name, :maximum => 255
   validate :validate_query_filters
 
@@ -163,13 +163,9 @@ class Query < ActiveRecord::Base
     }
   }
 
-  def initialize(attributes = nil)
+  def initialize(attributes=nil, *args)
     super attributes
     self.filters ||= { 'status_id' => {:operator => "o", :values => [""]} }
-  end
-
-  def after_initialize
-    # Store the fact that project is nil (used in #editable_by?)
     @is_for_all = project.nil?
   end
 
@@ -178,25 +174,30 @@ class Query < ActiveRecord::Base
       if values_for(field)
         case type_for(field)
         when :integer
-          errors.add(label_for(field), :invalid) if values_for(field).detect {|v| v.present? && !v.match(/^\d+$/) }
+          add_filter_error(field, :invalid) if values_for(field).detect {|v| v.present? && !v.match(/^\d+$/) }
         when :float
-          errors.add(label_for(field), :invalid) if values_for(field).detect {|v| v.present? && !v.match(/^\d+(\.\d*)?$/) }
+          add_filter_error(field, :invalid) if values_for(field).detect {|v| v.present? && !v.match(/^\d+(\.\d*)?$/) }
         when :date, :date_past
           case operator_for(field)
           when "=", ">=", "<=", "><"
-            errors.add(label_for(field), :invalid) if values_for(field).detect {|v| v.present? && (!v.match(/^\d{4}-\d{2}-\d{2}$/) || (Date.parse(v) rescue nil).nil?) }
+            add_filter_error(field, :invalid) if values_for(field).detect {|v| v.present? && (!v.match(/^\d{4}-\d{2}-\d{2}$/) || (Date.parse(v) rescue nil).nil?) }
           when ">t-", "<t-", "t-"
-            errors.add(label_for(field), :invalid) if values_for(field).detect {|v| v.present? && !v.match(/^\d+$/) }
+            add_filter_error(field, :invalid) if values_for(field).detect {|v| v.present? && !v.match(/^\d+$/) }
           end
         end
       end
 
-      errors.add label_for(field), :blank unless
+      add_filter_error(field, :blank) unless
           # filter requires one or more values
           (values_for(field) and !values_for(field).first.blank?) or
           # filter doesn't require any value
           ["o", "c", "!*", "*", "t", "w"].include? operator_for(field)
     end if filters
+  end
+
+  def add_filter_error(field, message)
+    m = label_for(field) + " " + l(message, :scope => 'activerecord.errors.messages')
+    errors.add(:base, m)
   end
 
   # Returns true if the query is visible to +user+ or the current user.
@@ -231,14 +232,24 @@ class Query < ActiveRecord::Base
     principals = []
     if project
       principals += project.principals.sort
+      unless project.leaf?
+        subprojects = project.descendants.visible.all
+        if subprojects.any?
+          @available_filters["subproject_id"] = { :type => :list_subprojects, :order => 13, :values => subprojects.collect{|s| [s.name, s.id.to_s] } }
+          principals += Principal.member_of(subprojects)
+        end
+      end
     else
       all_projects = Project.visible.all
       if all_projects.any?
         # members of visible projects
-        principals += Principal.active.find(:all, :conditions => ["#{User.table_name}.id IN (SELECT DISTINCT user_id FROM members WHERE project_id IN (?))", all_projects.collect(&:id)]).sort
+        principals += Principal.member_of(all_projects)
 
         # project filter
         project_values = []
+        if User.current.logged? && User.current.memberships.any?
+          project_values << ["<< #{l(:label_my_projects).downcase} >>", "mine"]
+        end
         Project.project_tree(all_projects) do |p, level|
           prefix = (level > 0 ? ('--' * level + ' ') : '')
           project_values << ["#{prefix}#{p.name}", p.id.to_s]
@@ -246,6 +257,8 @@ class Query < ActiveRecord::Base
         @available_filters["project_id"] = { :type => :list, :order => 1, :values => project_values} unless project_values.empty?
       end
     end
+    principals.uniq!
+    principals.sort!
     users = principals.select {|p| p.is_a?(User)}
 
     assigned_to_values = []
@@ -277,12 +290,6 @@ class Query < ActiveRecord::Base
       versions = project.shared_versions.all
       unless versions.empty?
         @available_filters["fixed_version_id"] = { :type => :list_optional, :order => 7, :values => versions.sort.collect{|s| ["#{s.project.name} - #{s.name}", s.id.to_s] } }
-      end
-      unless project.leaf?
-        subprojects = project.descendants.visible.all
-        unless subprojects.empty?
-          @available_filters["subproject_id"] = { :type => :list_subprojects, :order => 13, :values => subprojects.collect{|s| [s.name, s.id.to_s] } }
-        end
       end
       add_custom_fields_filters(project.all_issue_custom_fields)
     else
@@ -351,16 +358,29 @@ class Query < ActiveRecord::Base
 
   def label_for(field)
     label = available_filters[field][:name] if available_filters.has_key?(field)
-    label ||= field.gsub(/\_id$/, "")
+    label ||= l("field_#{field.to_s.gsub(/_id$/, '')}", :default => field)
   end
 
   def available_columns
     return @available_columns if @available_columns
-    @available_columns = ::Query.available_columns
+    @available_columns = ::Query.available_columns.dup
     @available_columns += (project ?
                             project.all_issue_custom_fields :
                             IssueCustomField.find(:all)
                            ).collect {|cf| QueryCustomFieldColumn.new(cf) }
+
+    if User.current.allowed_to?(:view_time_entries, project, :global => true)
+      index = nil
+      @available_columns.each_with_index {|column, i| index = i if column.name == :estimated_hours}
+      index = (index ? index + 1 : -1)
+      # insert the column after estimated_hours or at the end
+      @available_columns.insert index, QueryColumn.new(:spent_hours,
+        :sortable => "(SELECT COALESCE(SUM(hours), 0) FROM #{TimeEntry.table_name} WHERE #{TimeEntry.table_name}.issue_id = #{Issue.table_name}.id)",
+        :default_order => 'desc',
+        :caption => :label_spent_time
+      )
+    end
+    @available_columns
   end
 
   def self.available_columns=(v)
@@ -412,7 +432,7 @@ class Query < ActiveRecord::Base
   end
 
   def has_column?(column)
-    column_names && column_names.include?(column.name)
+    column_names && column_names.include?(column.is_a?(QueryColumn) ? column.name : column)
   end
 
   def has_default_columns?
@@ -508,6 +528,12 @@ class Query < ActiveRecord::Base
         end
       end
 
+      if field == 'project_id'
+        if v.delete('mine')
+          v += User.current.memberships.map(&:project_id).map(&:to_s)
+        end
+      end
+
       if field =~ /^cf_(\d+)$/
         # custom field
         filters_clauses << sql_for_custom_field(field, operator, v, $1)
@@ -561,12 +587,34 @@ class Query < ActiveRecord::Base
     
     joins = (order_option && order_option.include?('authors')) ? "LEFT OUTER JOIN users authors ON authors.id = #{Issue.table_name}.author_id" : nil
 
-    Issue.visible.scoped(:conditions => options[:conditions]).find :all, :include => ([:status, :project] + (options[:include] || [])).uniq,
+    issues = Issue.visible.scoped(:conditions => options[:conditions]).find :all, :include => ([:status, :project] + (options[:include] || [])).uniq,
                      :conditions => statement,
                      :order => order_option,
                      :joins => joins,
                      :limit  => options[:limit],
                      :offset => options[:offset]
+
+    if has_column?(:spent_hours)
+      Issue.load_visible_spent_hours(issues)
+    end
+    issues
+  rescue ::ActiveRecord::StatementInvalid => e
+    raise StatementInvalid.new(e.message)
+  end
+
+  # Returns the issues ids
+  def issue_ids(options={})
+    order_option = [group_by_sort_order, options[:order]].reject {|s| s.blank?}.join(',')
+    order_option = nil if order_option.blank?
+    
+    joins = (order_option && order_option.include?('authors')) ? "LEFT OUTER JOIN users authors ON authors.id = #{Issue.table_name}.author_id" : nil
+
+    Issue.visible.scoped(:conditions => options[:conditions]).scoped(:include => ([:status, :project] + (options[:include] || [])).uniq,
+                     :conditions => statement,
+                     :order => order_option,
+                     :joins => joins,
+                     :limit  => options[:limit],
+                     :offset => options[:offset]).find_ids
   rescue ::ActiveRecord::StatementInvalid => e
     raise StatementInvalid.new(e.message)
   end
@@ -643,7 +691,19 @@ class Query < ActiveRecord::Base
   def sql_for_custom_field(field, operator, value, custom_field_id)
     db_table = CustomValue.table_name
     db_field = 'value'
-    "#{Issue.table_name}.id IN (SELECT #{Issue.table_name}.id FROM #{Issue.table_name} LEFT OUTER JOIN #{db_table} ON #{db_table}.customized_type='Issue' AND #{db_table}.customized_id=#{Issue.table_name}.id AND #{db_table}.custom_field_id=#{custom_field_id} WHERE " +
+    filter = @available_filters[field]
+    if filter && filter[:format] == 'user'
+      if value.delete('me')
+        value.push User.current.id.to_s
+      end
+    end
+    not_in = nil
+    if operator == '!'
+      # Makes ! operator work for custom fields with multiple values
+      operator = '='
+      not_in = 'NOT'
+    end
+    "#{Issue.table_name}.id #{not_in} IN (SELECT #{Issue.table_name}.id FROM #{Issue.table_name} LEFT OUTER JOIN #{db_table} ON #{db_table}.customized_type='Issue' AND #{db_table}.customized_id=#{Issue.table_name}.id AND #{db_table}.custom_field_id=#{custom_field_id} WHERE " +
       sql_for_field(field, operator, value, db_table, db_field, true) + ')'
   end
 
@@ -657,9 +717,17 @@ class Query < ActiveRecord::Base
         when :date, :date_past
           sql = date_clause(db_table, db_field, (Date.parse(value.first) rescue nil), (Date.parse(value.first) rescue nil))
         when :integer
-          sql = "#{db_table}.#{db_field} = #{value.first.to_i}"
+          if is_custom_filter
+            sql = "(#{db_table}.#{db_field} <> '' AND CAST(#{db_table}.#{db_field} AS decimal(60,3)) = #{value.first.to_i})"
+          else
+            sql = "#{db_table}.#{db_field} = #{value.first.to_i}"
+          end
         when :float
-          sql = "#{db_table}.#{db_field} BETWEEN #{value.first.to_f - 1e-5} AND #{value.first.to_f + 1e-5}"
+          if is_custom_filter
+            sql = "(#{db_table}.#{db_field} <> '' AND CAST(#{db_table}.#{db_field} AS decimal(60,3)) BETWEEN #{value.first.to_f - 1e-5} AND #{value.first.to_f + 1e-5})"
+          else
+            sql = "#{db_table}.#{db_field} BETWEEN #{value.first.to_f - 1e-5} AND #{value.first.to_f + 1e-5}"
+          end
         else
           sql = "#{db_table}.#{db_field} IN (" + value.collect{|val| "'#{connection.quote_string(val)}'"}.join(",") + ")"
         end
@@ -685,7 +753,7 @@ class Query < ActiveRecord::Base
         sql = date_clause(db_table, db_field, (Date.parse(value.first) rescue nil), nil)
       else
         if is_custom_filter
-          sql = "CAST(#{db_table}.#{db_field} AS decimal(60,3)) >= #{value.first.to_f}"
+          sql = "(#{db_table}.#{db_field} <> '' AND CAST(#{db_table}.#{db_field} AS decimal(60,3)) >= #{value.first.to_f})"
         else
           sql = "#{db_table}.#{db_field} >= #{value.first.to_f}"
         end
@@ -695,7 +763,7 @@ class Query < ActiveRecord::Base
         sql = date_clause(db_table, db_field, nil, (Date.parse(value.first) rescue nil))
       else
         if is_custom_filter
-          sql = "CAST(#{db_table}.#{db_field} AS decimal(60,3)) <= #{value.first.to_f}"
+          sql = "(#{db_table}.#{db_field} <> '' AND CAST(#{db_table}.#{db_field} AS decimal(60,3)) <= #{value.first.to_f})"
         else
           sql = "#{db_table}.#{db_field} <= #{value.first.to_f}"
         end
@@ -705,15 +773,15 @@ class Query < ActiveRecord::Base
         sql = date_clause(db_table, db_field, (Date.parse(value[0]) rescue nil), (Date.parse(value[1]) rescue nil))
       else
         if is_custom_filter
-          sql = "CAST(#{db_table}.#{db_field} AS decimal(60,3)) BETWEEN #{value[0].to_f} AND #{value[1].to_f}"
+          sql = "(#{db_table}.#{db_field} <> '' AND CAST(#{db_table}.#{db_field} AS decimal(60,3)) BETWEEN #{value[0].to_f} AND #{value[1].to_f})"
         else
           sql = "#{db_table}.#{db_field} BETWEEN #{value[0].to_f} AND #{value[1].to_f}"
         end
       end
     when "o"
-      sql = "#{IssueStatus.table_name}.is_closed=#{connection.quoted_false}" if field == "status_id"
+      sql = "#{Issue.table_name}.status_id IN (SELECT id FROM #{IssueStatus.table_name} WHERE is_closed=#{connection.quoted_false})" if field == "status_id"
     when "c"
-      sql = "#{IssueStatus.table_name}.is_closed=#{connection.quoted_true}" if field == "status_id"
+      sql = "#{Issue.table_name}.status_id IN (SELECT id FROM #{IssueStatus.table_name} WHERE is_closed=#{connection.quoted_true})" if field == "status_id"
     when ">t-"
       sql = relative_date_clause(db_table, db_field, - value.first.to_i, 0)
     when "<t-"
@@ -763,11 +831,15 @@ class Query < ActiveRecord::Base
         options = { :type => :float, :order => 20 }
       when "user", "version"
         next unless project
-        options = { :type => :list_optional, :values => field.possible_values_options(project), :order => 20}
+        values = field.possible_values_options(project)
+        if User.current.logged? && field.field_format == 'user'
+          values.unshift ["<< #{l(:label_me)} >>", "me"]
+        end
+        options = { :type => :list_optional, :values => values, :order => 20}
       else
         options = { :type => :string, :order => 20 }
       end
-      @available_filters["cf_#{field.id}"] = options.merge({ :name => field.name })
+      @available_filters["cf_#{field.id}"] = options.merge({ :name => field.name, :format => field.field_format })
     end
   end
 

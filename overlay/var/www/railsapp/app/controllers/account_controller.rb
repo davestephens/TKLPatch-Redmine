@@ -29,6 +29,9 @@ class AccountController < ApplicationController
     else
       authenticate_user
     end
+  rescue AuthSourceException => e
+    logger.error "An error occured when authenticating #{params[:username]}: #{e.message}"
+    render_error :message => e.message
   end
 
   # Log out current user and redirect to welcome page
@@ -81,7 +84,8 @@ class AccountController < ApplicationController
       session[:auth_source_registration] = nil
       @user = User.new(:language => Setting.default_language)
     else
-      @user = User.new(params[:user])
+      @user = User.new
+      @user.safe_attributes = params[:user]
       @user.admin = false
       @user.register
       if session[:auth_source_registration]
@@ -96,7 +100,7 @@ class AccountController < ApplicationController
         end
       else
         @user.login = params[:user][:login]
-        @user.password, @user.password_confirmation = params[:password], params[:password_confirmation]
+        @user.password, @user.password_confirmation = params[:user][:password], params[:user][:password_confirmation]
 
         case Setting.self_registration
         when '1'

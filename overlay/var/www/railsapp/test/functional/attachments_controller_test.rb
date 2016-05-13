@@ -32,8 +32,12 @@ class AttachmentsControllerTest < ActionController::TestCase
     @controller = AttachmentsController.new
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
-    Attachment.storage_path = "#{Rails.root}/test/fixtures/files"
     User.current = nil
+    set_fixtures_attachments_directory
+  end
+
+  def teardown
+    set_tmp_attachments_directory
   end
 
   def test_show_diff
@@ -206,6 +210,20 @@ class AttachmentsControllerTest < ActionController::TestCase
     set_tmp_attachments_directory
   end
 
+  def test_show_file_without_container_should_be_denied
+    set_tmp_attachments_directory
+    attachment = Attachment.create!(:file => uploaded_test_file("testfile.txt", "text/plain"), :author_id => 2)
+
+    @request.session[:user_id] = 2
+    get :show, :id => attachment.id
+    assert_response 403
+  end
+
+  def test_show_invalid_should_respond_with_404
+    get :show, :id => 999
+    assert_response 404
+  end
+
   def test_download_text_file
     get :download, :id => 4
     assert_response :success
@@ -246,15 +264,18 @@ class AttachmentsControllerTest < ActionController::TestCase
     @request.session[:user_id] = 2
 
     assert_difference 'issue.attachments.count', -1 do
-      delete :destroy, :id => 1
+      assert_difference 'Journal.count' do
+        delete :destroy, :id => 1
+        assert_redirected_to '/projects/ecookbook'
+      end
     end
-    # no referrer
-    assert_redirected_to '/projects/ecookbook'
     assert_nil Attachment.find_by_id(1)
-    j = issue.journals.find(:first, :order => 'created_on DESC')
+    j = Journal.first(:order => 'id DESC')
+    assert_equal issue, j.journalized
     assert_equal 'attachment', j.details.first.property
     assert_equal '1', j.details.first.prop_key
     assert_equal 'error281.txt', j.details.first.old_value
+    assert_equal User.find(2), j.user
   end
 
   def test_destroy_wiki_page_attachment

@@ -60,6 +60,15 @@ class Redmine::I18nTest < ActiveSupport::TestCase
     end
   end
 
+  def test_time_for_each_zone
+    ActiveSupport::TimeZone.all.each do |zone|
+      User.current.stubs(:time_zone).returns(zone.name)
+      assert_nothing_raised "#{zone} failure" do
+        format_time(Time.now)
+      end
+    end
+  end
+
   def test_time_format
     set_language_if_valid 'en'
     now = Time.parse('2011-02-20 15:45:22')
@@ -120,6 +129,15 @@ class Redmine::I18nTest < ActiveSupport::TestCase
   def test_valid_languages
     assert valid_languages.is_a?(Array)
     assert valid_languages.first.is_a?(Symbol)
+  end
+
+  def test_locales_validness
+    lang_files_count = Dir["#{Rails.root}/config/locales/*.yml"].size
+    assert_equal lang_files_count, valid_languages.size
+    valid_languages.each do |lang|
+      assert set_language_if_valid(lang)
+    end
+    set_language_if_valid('en')
   end
 
   def test_valid_language

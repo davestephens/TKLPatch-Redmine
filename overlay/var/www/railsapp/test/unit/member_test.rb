@@ -33,6 +33,8 @@ class MemberTest < ActiveSupport::TestCase
            :wikis, :wiki_pages, :wiki_contents, :wiki_content_versions,
            :boards
 
+  include Redmine::I18n
+
   def setup
     @jsmith = Member.find(1)
   end
@@ -67,19 +69,41 @@ class MemberTest < ActiveSupport::TestCase
     # same use can't have more than one membership for a project
     assert !member.save
 
-    member = Member.new(:project_id => 1, :user_id => 2, :role_ids => [])
     # must have one role at least
+    user = User.new(:firstname => "new1", :lastname => "user1", :mail => "test_validate@somenet.foo")
+    user.login = "test_validate"
+    user.password, user.password_confirmation = "password", "password"
+    assert user.save
+
+    set_language_if_valid 'fr'
+    member = Member.new(:project_id => 1, :user_id => user.id, :role_ids => [])
+    assert !member.save
+    assert_include I18n.translate('activerecord.errors.messages.empty'), member.errors[:role]
+    str = "R\xc3\xb4le doit \xc3\xaatre renseign\xc3\xa9(e)"
+    str.force_encoding('UTF-8') if str.respond_to?(:force_encoding)
+    assert_equal str, [member.errors.full_messages].flatten.join
+  end
+
+  def test_validate_member_role
+    user = User.new(:firstname => "new1", :lastname => "user1", :mail => "test_validate@somenet.foo")
+    user.login = "test_validate_member_role"
+    user.password, user.password_confirmation = "password", "password"
+    assert user.save
+    member = Member.new(:project_id => 1, :user_id => user.id, :role_ids => [5])
     assert !member.save
   end
 
   def test_destroy
+    category1 = IssueCategory.find(1)
+    assert_equal @jsmith.user.id, category1.assigned_to_id
     assert_difference 'Member.count', -1 do
       assert_difference 'MemberRole.count', -1 do
         @jsmith.destroy
       end
     end
-
     assert_raise(ActiveRecord::RecordNotFound) { Member.find(@jsmith.id) }
+    category1.reload
+    assert_nil category1.assigned_to_id
   end
 
   def test_sort_without_roles

@@ -20,6 +20,19 @@ require File.expand_path('../../test_helper', __FILE__)
 class PrincipalTest < ActiveSupport::TestCase
   fixtures :users, :projects, :members, :member_roles
 
+  def test_active_scope_should_return_groups_and_active_users
+    result = Principal.active.all
+    assert_include Group.first, result
+    assert_not_nil result.detect {|p| p.is_a?(User)}
+    assert_nil result.detect {|p| p.is_a?(User) && !p.active?}
+    assert_nil result.detect {|p| p.is_a?(AnonymousUser)}
+  end
+
+  def test_member_of_scope_should_return_the_union_of_all_members
+    projects = Project.find_all_by_id(1, 2)
+    assert_equal projects.map(&:principals).flatten.sort, Principal.member_of(projects).sort
+  end
+
   def test_not_member_of_scope_should_return_users_that_have_no_memberships
     projects = Project.find_all_by_id(1, 2)
     expected = (Principal.all - projects.map(&:memberships).flatten.map(&:principal)).sort
@@ -39,6 +52,8 @@ class PrincipalTest < ActiveSupport::TestCase
 
       Principal.generate!(:mail => 'mail@example.com')
       Principal.generate!(:mail => 'mail2@example.com')
+
+      @palmer = Principal.generate!(:firstname => 'David', :lastname => 'Palmer')
     end
 
     should "search login" do
@@ -68,6 +83,19 @@ class PrincipalTest < ActiveSupport::TestCase
       assert_equal 2, results.count
       assert results.all? {|u| u.mail.match(/mail/) }
     end
-  end
 
+    should "search firstname and lastname" do
+      results = Principal.like('david palm')
+
+      assert_equal 1, results.count
+      assert_equal @palmer, results.first
+    end
+
+    should "search lastname and firstname" do
+      results = Principal.like('palmer davi')
+
+      assert_equal 1, results.count
+      assert_equal @palmer, results.first
+    end
+  end
 end

@@ -37,7 +37,7 @@ class Project < ActiveRecord::Base
 
   has_many :enabled_modules, :dependent => :delete_all
   has_and_belongs_to_many :trackers, :order => "#{Tracker.table_name}.position"
-  has_many :issues, :dependent => :destroy, :order => "#{Issue.table_name}.created_on DESC", :include => [:status, :tracker]
+  has_many :issues, :dependent => :destroy, :include => [:status, :tracker]
   has_many :issue_changes, :through => :issues, :source => :journals
   has_many :versions, :dependent => :destroy, :order => "#{Version.table_name}.effective_date DESC, #{Version.table_name}.name DESC"
   has_many :time_entries, :dependent => :delete_all
@@ -46,7 +46,8 @@ class Project < ActiveRecord::Base
   has_many :news, :dependent => :destroy, :include => :author
   has_many :issue_categories, :dependent => :delete_all, :order => "#{IssueCategory.table_name}.name"
   has_many :boards, :dependent => :destroy, :order => "position ASC"
-  has_one :repository, :dependent => :destroy
+  has_one :repository, :conditions => ["is_default = ?", true]
+  has_many :repositories, :dependent => :destroy
   has_many :changesets, :through => :repository
   has_one :wiki, :dependent => :destroy
   # Custom field for the project issues
@@ -75,7 +76,7 @@ class Project < ActiveRecord::Base
   validates_length_of :homepage, :maximum => 255
   validates_length_of :identifier, :in => 1..IDENTIFIER_MAX_LENGTH
   # donwcase letters, digits, dashes but not digits only
-  validates_format_of :identifier, :with => /^(?!\d+$)[a-z0-9\-]*$/, :if => Proc.new { |p| p.identifier_changed? }
+  validates_format_of :identifier, :with => /^(?!\d+$)[a-z0-9\-_]*$/, :if => Proc.new { |p| p.identifier_changed? }
   # reserved words
   validates_exclusion_of :identifier, :in => %w( new )
 
@@ -83,10 +84,30 @@ class Project < ActiveRecord::Base
 
   named_scope :has_module, lambda { |mod| { :conditions => ["#{Project.table_name}.id IN (SELECT em.project_id FROM #{EnabledModule.table_name} em WHERE em.name=?)", mod.to_s] } }
   named_scope :active, { :conditions => "#{Project.table_name}.status = #{STATUS_ACTIVE}"}
+  named_scope :status, lambda {|arg| arg.blank? ? {} : {:conditions => {:status => arg.to_i}} }
   named_scope :all_public, { :conditions => { :is_public => true } }
   named_scope :visible, lambda {|*args| {:conditions => Project.visible_condition(args.shift || User.current, *args) }}
+  named_scope :allowed_to, lambda {|*args| 
+    user = User.current
+    permission = nil
+    if args.first.is_a?(Symbol)
+      permission = args.shift
+    else
+      user = args.shift
+      permission = args.shift
+    end
+    { :conditions => Project.allowed_to_condition(user, permission, *args) }
+  }
+  named_scope :like, lambda {|arg|
+    if arg.blank?
+      {}
+    else
+      pattern = "%#{arg.to_s.strip.downcase}%"
+      {:conditions => ["LOWER(identifier) LIKE :p OR LOWER(name) LIKE :p", {:p => pattern}]}
+    end
+  }
 
-  def initialize(attributes = nil)
+  def initialize(attributes=nil, *args)
     super
 
     initialized = (attributes || {}).stringify_keys
@@ -249,6 +270,19 @@ class Project < ActiveRecord::Base
     else
       super
     end
+  end
+
+  def reload(*args)
+    @shared_versions = nil
+    @rolled_up_versions = nil
+    @rolled_up_trackers = nil
+    @all_issue_custom_fields = nil
+    @all_time_entry_custom_fields = nil
+    @to_param = nil
+    @allowed_parents = nil
+    @allowed_permissions = nil
+    @actions_allowed = nil
+    super
   end
 
   def to_param
@@ -806,7 +840,7 @@ class Project < ActiveRecord::Base
   # Copies queries from +project+
   def copy_queries(project)
     project.queries.each do |query|
-      new_query = Query.new
+      new_query = ::Query.new
       new_query.attributes = query.attributes.dup.except("id", "project_id", "sort_criteria")
       new_query.sort_criteria = query.sort_criteria if query.sort_criteria
       new_query.project = self

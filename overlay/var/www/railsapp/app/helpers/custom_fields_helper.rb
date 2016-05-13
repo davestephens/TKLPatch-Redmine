@@ -1,7 +1,7 @@
 # encoding: utf-8
 #
 # Redmine - project management software
-# Copyright (C) 2006-2011  Jean-Philippe Lang
+# Copyright (C) 2006-2012  Jean-Philippe Lang
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -36,6 +36,7 @@ module CustomFieldsHelper
   def custom_field_tag(name, custom_value)	
     custom_field = custom_value.custom_field
     field_name = "#{name}[custom_field_values][#{custom_field.id}]"
+    field_name << "[]" if custom_field.multiple?
     field_id = "#{name}_custom_field_values_#{custom_field.id}"
 
     field_format = Redmine::CustomFieldFormat.find_by_name(custom_field.field_format)
@@ -48,10 +49,22 @@ module CustomFieldsHelper
     when "bool"
       hidden_field_tag(field_name, '0') + check_box_tag(field_name, '1', custom_value.true?, :id => field_id)
     when "list"
-      blank_option = custom_field.is_required? ?
-                       (custom_field.default_value.blank? ? "<option value=\"\">--- #{l(:actionview_instancetag_blank_option)} ---</option>" : '') :
-                       '<option></option>'
-      select_tag(field_name, blank_option + options_for_select(custom_field.possible_values_options(custom_value.customized), custom_value.value), :id => field_id)
+      blank_option = ''
+      unless custom_field.multiple?
+        if custom_field.is_required?
+          unless custom_field.default_value.present?
+            blank_option = "<option value=\"\">--- #{l(:actionview_instancetag_blank_option)} ---</option>"
+          end
+        else
+          blank_option = '<option></option>'
+        end
+      end
+      s = select_tag(field_name, blank_option.html_safe + options_for_select(custom_field.possible_values_options(custom_value.customized), custom_value.value),
+        :id => field_id, :multiple => custom_field.multiple?)
+      if custom_field.multiple?
+        s << hidden_field_tag(field_name, '')
+      end
+      s
     else
       text_field_tag(field_name, custom_value.value, :id => field_id)
     end
@@ -61,8 +74,7 @@ module CustomFieldsHelper
   def custom_field_label_tag(name, custom_value)
     content_tag "label", h(custom_value.custom_field.name) +
 	(custom_value.custom_field.is_required? ? " <span class=\"required\">*</span>".html_safe : ""),
-	:for => "#{name}_custom_field_values_#{custom_value.custom_field.id}",
-	:class => (custom_value.errors.empty? ? nil : "error" )
+	:for => "#{name}_custom_field_values_#{custom_value.custom_field.id}"
   end
 
   # Return custom field tag with its label tag
@@ -72,6 +84,7 @@ module CustomFieldsHelper
 
   def custom_field_tag_for_bulk_edit(name, custom_field, projects=nil)
     field_name = "#{name}[custom_field_values][#{custom_field.id}]"
+    field_name << "[]" if custom_field.multiple?
     field_id = "#{name}_custom_field_values_#{custom_field.id}"
     field_format = Redmine::CustomFieldFormat.find_by_name(custom_field.field_format)
     case field_format.try(:edit_as)
@@ -85,7 +98,12 @@ module CustomFieldsHelper
                                                    [l(:general_text_yes), '1'],
                                                    [l(:general_text_no), '0']]), :id => field_id)
       when "list"
-        select_tag(field_name, options_for_select([[l(:label_no_change_option), '']] + custom_field.possible_values_options(projects)), :id => field_id)
+        options = []
+        options << [l(:label_no_change_option), ''] unless custom_field.multiple?
+        options << [l(:label_none), '__none__'] unless custom_field.is_required?
+        options += custom_field.possible_values_options(projects)
+        select_tag(field_name, options_for_select(options),
+          :id => field_id, :multiple => custom_field.multiple?)
       else
         text_field_tag(field_name, '', :id => field_id)
     end
@@ -99,7 +117,11 @@ module CustomFieldsHelper
 
   # Return a string used to display a custom value
   def format_value(value, field_format)
-    Redmine::CustomFieldFormat.format_value(value, field_format) # Proxy
+    if value.is_a?(Array)
+      value.collect {|v| format_value(v, field_format)}.compact.sort.join(', ')
+    else
+      Redmine::CustomFieldFormat.format_value(value, field_format)
+    end
   end
 
   # Return an array of custom field formats which can be used in select_tag
@@ -111,8 +133,18 @@ module CustomFieldsHelper
   def render_api_custom_values(custom_values, api)
     api.array :custom_fields do
       custom_values.each do |custom_value|
-        api.custom_field :id => custom_value.custom_field_id, :name => custom_value.custom_field.name do
-          api.value custom_value.value
+        attrs = {:id => custom_value.custom_field_id, :name => custom_value.custom_field.name}
+        attrs.merge!(:multiple => true) if custom_value.custom_field.multiple?
+        api.custom_field attrs do
+          if custom_value.value.is_a?(Array)
+            api.array :value do
+              custom_value.value.each do |value|
+                api.value value unless value.blank?
+              end
+            end
+          else
+            api.value custom_value.value
+          end
         end
       end
     end unless custom_values.empty?

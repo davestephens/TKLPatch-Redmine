@@ -29,7 +29,7 @@ class ProjectsController < ApplicationController
 
   after_filter :only => [:create, :edit, :update, :archive, :unarchive, :destroy] do |controller|
     if controller.request.post?
-      controller.send :expire_action, :controller => 'welcome', :action => 'robots.txt'
+      controller.send :expire_action, :controller => 'welcome', :action => 'robots'
     end
   end
 
@@ -70,7 +70,6 @@ class ProjectsController < ApplicationController
     @project.safe_attributes = params[:project]
   end
 
-  verify :method => :post, :only => :create, :render => {:nothing => true, :status => :method_not_allowed }
   def create
     @issue_custom_fields = IssueCustomField.find(:all, :order => "#{CustomField.table_name}.position")
     @trackers = Tracker.all
@@ -177,15 +176,12 @@ class ProjectsController < ApplicationController
     @issue_category ||= IssueCategory.new
     @member ||= @project.members.new
     @trackers = Tracker.all
-    @repository ||= @project.repository
     @wiki ||= @project.wiki
   end
 
   def edit
   end
 
-  # TODO: convert to PUT only
-  verify :method => [:post, :put], :only => :update, :render => {:nothing => true, :status => :method_not_allowed }
   def update
     @project.safe_attributes = params[:project]
     if validate_parent_id && @project.save
@@ -208,7 +204,6 @@ class ProjectsController < ApplicationController
     end
   end
 
-  verify :method => :post, :only => :modules, :render => {:nothing => true, :status => :method_not_allowed }
   def modules
     @project.enabled_module_names = params[:enabled_module_names]
     flash[:notice] = l(:notice_successful_update)
@@ -232,29 +227,18 @@ class ProjectsController < ApplicationController
   # Delete @project
   def destroy
     @project_to_destroy = @project
-    if request.get?
-      # display confirmation view
-    else
-      if api_request? || params[:confirm]
-        @project_to_destroy.destroy
-        respond_to do |format|
-          format.html { redirect_to :controller => 'admin', :action => 'projects' }
-          format.api  { head :ok }
-        end
+    if api_request? || params[:confirm]
+      @project_to_destroy.destroy
+      respond_to do |format|
+        format.html { redirect_to :controller => 'admin', :action => 'projects' }
+        format.api  { head :ok }
       end
     end
     # hide project in layout
     @project = nil
   end
 
-private
-  def find_optional_project
-    return true unless params[:id]
-    @project = Project.find(params[:id])
-    authorize
-  rescue ActiveRecord::RecordNotFound
-    render_404
-  end
+  private
 
   # Validates parent_id param according to user's permissions
   # TODO: move it to Project model in a validation that depends on User.current

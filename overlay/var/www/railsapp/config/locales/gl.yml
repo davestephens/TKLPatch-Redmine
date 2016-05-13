@@ -4,34 +4,34 @@
 gl:
   number:
     format:
-      separator: "," 
-      delimiter: "." 
+      separator: ","
+      delimiter: "."
       precision: 3
 
     currency:
       format:
-        format: "%n %u" 
-        unit: "€" 
-        separator: "," 
-        delimiter: "." 
+        format: "%n %u"
+        unit: "€"
+        separator: ","
+        delimiter: "."
         precision: 2
 
     percentage:
       format:
-        # separator: 
-        delimiter: "" 
-        # precision: 
+        # separator:
+        delimiter: ""
+        # precision:
 
     precision:
       format:
         # separator:
-        delimiter: "" 
+        delimiter: ""
         # precision:
 
     human:
       format:
-        # separator: 
-        delimiter: "" 
+        # separator:
+        delimiter: ""
         precision: 1
       storage_units:
         format: "%n %u"
@@ -43,8 +43,7 @@ gl:
           mb: "MB"
           gb: "GB"
           tb: "TB"
-  
-  
+
   direction: ltr
   date:
     formats:
@@ -66,10 +65,10 @@ gl:
       time:       "%H:%M hs"
       short:      "%e/%m, %H:%M hs"
       long:       "%A %e de %B de %Y ás %H:%M horas"
-    
+
     am: ''
     pm: ''
-    
+
   datetime:
     distance_in_words:
       half_a_minute: 'medio minuto'
@@ -116,7 +115,7 @@ gl:
       today: 'hoxe'
       tomorrow: 'mañá'
       in: 'dentro de'
-  
+
   support:
     array:
       sentence_connector: e
@@ -156,7 +155,7 @@ gl:
         cant_link_an_issue_with_a_descendant: "An issue can not be linked to one of its subtasks"
 
   actionview_instancetag_blank_option: Por favor seleccione
-  
+
   button_activate: Activar
   button_add: Engadir
   button_annotate: Anotar
@@ -789,7 +788,6 @@ gl:
   text_min_max_length_info: 0 para ningunha restrición
   text_no_configuration_data: "Inda non se configuraron perfiles, nin tipos, estados e fluxo de traballo asociado a peticións. Recoméndase encarecidamente cargar a configuración por defecto. Unha vez cargada, poderá modificala."
   text_project_destroy_confirmation: ¿Estás seguro de querer eliminar o proxecto?
-  text_project_identifier_info: 'Letras minúsculas (a-z), números e signos de puntuación permitidos.<br />Unha vez gardado, o identificador non pode modificarse.'
   text_reassign_time_entries: 'Reasignar as horas a esta petición:'
   text_regexp_info: ex. ^[A-Z0-9]+$
   text_repository_usernames_mapping: "Estableza a correspondencia entre os usuarios de Redmine e os presentes no log do repositorio.\nOs usuarios co mesmo nome ou correo en Redmine e no repositorio serán asociados automaticamente."
@@ -1018,3 +1016,23 @@ gl:
   button_export: Export
   label_export_options: "%{export_format} export options"
   error_attachment_too_big: This file cannot be uploaded because it exceeds the maximum allowed file size (%{max_size})
+  notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
+  label_x_issues:
+    zero:  0 petición
+    one:   1 petición
+    other: "%{count} peticións"
+  label_repository_new: New repository
+  field_repository_is_default: Main repository
+  label_copy_attachments: Copy attachments
+  label_item_position: "%{position}/%{count}"
+  label_completed_versions: Completed versions
+  text_project_identifier_info: Only lower case letters (a-z), numbers, dashes and underscores are allowed.<br />Once saved, the identifier cannot be changed.
+  field_multiple: Multiple values
+  setting_commit_cross_project_ref: Allow issues of all the other projects to be referenced and fixed
+  text_issue_conflict_resolution_add_notes: Add my notes and discard my other changes
+  text_issue_conflict_resolution_overwrite: Apply my changes anyway (previous notes will be kept but some changes may be overwritten)
+  notice_issue_update_conflict: The issue has been updated by an other user while you were editing it.
+  text_issue_conflict_resolution_cancel: Discard all my changes and redisplay %{link}
+  permission_manage_related_issues: Manage related issues
+  field_ldap_filter: LDAP filter
+  label_search_for_watchers: Search for watchers to add

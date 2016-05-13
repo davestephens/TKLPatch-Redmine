@@ -36,6 +36,25 @@ class FilesControllerTest < ActionController::TestCase
                    :attributes => { :href => '/attachments/download/9/version_file.zip' }
   end
 
+  def test_new
+    @request.session[:user_id] = 2
+    get :new, :project_id => 1
+    assert_response :success
+    assert_template 'new'
+
+    assert_tag 'select', :attributes => {:name => 'version_id'}
+  end
+
+  def test_new_without_versions
+    Version.delete_all
+    @request.session[:user_id] = 2
+    get :new, :project_id => 1
+    assert_response :success
+    assert_template 'new'
+
+    assert_no_tag 'select', :attributes => {:name => 'version_id'}
+  end
+
   def test_create_file
     set_tmp_attachments_directory
     @request.session[:user_id] = 2
@@ -53,9 +72,9 @@ class FilesControllerTest < ActionController::TestCase
     assert_equal Project.find(1), a.container
 
     mail = ActionMailer::Base.deliveries.last
-    assert_kind_of TMail::Mail, mail
+    assert_not_nil mail
     assert_equal "[eCookbook] New file", mail.subject
-    assert mail.body.include?('testfile.txt')
+    assert_mail_body_match 'testfile.txt', mail
   end
 
   def test_create_version_file

@@ -38,23 +38,17 @@ class UsersController < ApplicationController
       @limit = per_page_option
     end
 
-    scope = User
-    scope = scope.in_group(params[:group_id].to_i) if params[:group_id].present?
+    @status = params[:status] || 1
 
-    @status = params[:status] ? params[:status].to_i : 1
-    c = ARCondition.new(@status == 0 ? "status <> 0" : ["status = ?", @status])
+    scope = User.logged.status(@status)
+    scope = scope.like(params[:name]) if params[:name].present?
+    scope = scope.in_group(params[:group_id]) if params[:group_id].present?
 
-    unless params[:name].blank?
-      name = "%#{params[:name].strip.downcase}%"
-      c << ["LOWER(login) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(mail) LIKE ?", name, name, name, name]
-    end
-
-    @user_count = scope.count(:conditions => c.conditions)
+    @user_count = scope.count
     @user_pages = Paginator.new self, @user_count, @limit, params['page']
     @offset ||= @user_pages.current.offset
     @users =  scope.find :all,
                         :order => sort_clause,
-                        :conditions => c.conditions,
                         :limit  =>  @limit,
                         :offset =>  @offset
 
@@ -92,7 +86,6 @@ class UsersController < ApplicationController
     @auth_sources = AuthSource.find(:all)
   end
 
-  verify :method => :post, :only => :create, :render => {:nothing => true, :status => :method_not_allowed }
   def create
     @user = User.new(:language => Setting.default_language, :mail_notification => Setting.default_notification_option)
     @user.safe_attributes = params[:user]
@@ -100,11 +93,9 @@ class UsersController < ApplicationController
     @user.login = params[:user][:login]
     @user.password, @user.password_confirmation = params[:user][:password], params[:user][:password_confirmation] unless @user.auth_source_id
 
-    # TODO: Similar to My#account
-    @user.pref.attributes = params[:pref]
-    @user.pref[:no_self_notified] = (params[:no_self_notified] == '1')
-
     if @user.save
+      @user.pref.attributes = params[:pref]
+      @user.pref[:no_self_notified] = (params[:no_self_notified] == '1')
       @user.pref.save
       @user.notified_project_ids = (@user.mail_notification == 'selected' ? params[:notified_project_ids] : [])
 
@@ -137,7 +128,6 @@ class UsersController < ApplicationController
     @membership ||= Member.new
   end
 
-  verify :method => :put, :only => :update, :render => {:nothing => true, :status => :method_not_allowed }
   def update
     @user.admin = params[:user][:admin] if params[:user][:admin]
     @user.login = params[:user][:login] if params[:user][:login]
@@ -183,7 +173,6 @@ class UsersController < ApplicationController
     redirect_to :controller => 'users', :action => 'edit', :id => @user
   end
 
-  verify :method => :delete, :only => :destroy, :render => {:nothing => true, :status => :method_not_allowed }
   def destroy
     @user.destroy
     respond_to do |format|
@@ -194,7 +183,7 @@ class UsersController < ApplicationController
 
   def edit_membership
     @membership = Member.edit_membership(params[:membership_id], params[:membership], @user)
-    @membership.save if request.post?
+    @membership.save
     respond_to do |format|
       if @membership.valid?
         format.html { redirect_to :controller => 'users', :action => 'edit', :id => @user, :tab => 'memberships' }
@@ -216,7 +205,7 @@ class UsersController < ApplicationController
 
   def destroy_membership
     @membership = Member.find(params[:membership_id])
-    if request.post? && @membership.deletable?
+    if @membership.deletable?
       @membership.destroy
     end
     respond_to do |format|

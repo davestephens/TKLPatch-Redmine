@@ -31,7 +31,14 @@ module QueriesHelper
 
   def column_content(column, issue)
     value = column.value(issue)
-
+    if value.is_a?(Array)
+      value.collect {|v| column_value(column, issue, v)}.compact.sort.join(', ').html_safe
+    else
+      column_value(column, issue, value)
+    end
+  end
+  
+  def column_value(column, issue, value)
     case value.class.name
     when 'String'
       if column.name == :subject
@@ -46,6 +53,8 @@ module QueriesHelper
     when 'Fixnum', 'Float'
       if column.name == :done_ratio
         progress_bar(value, :width => '80px')
+      elsif  column.name == :spent_hours
+        sprintf "%.2f", value
       else
         h(value.to_s)
       end
@@ -87,6 +96,23 @@ module QueriesHelper
       @query = Query.find_by_id(session[:query][:id]) if session[:query][:id]
       @query ||= Query.new(:name => "_", :filters => session[:query][:filters], :group_by => session[:query][:group_by], :column_names => session[:query][:column_names])
       @query.project = @project
+    end
+  end
+
+  def retrieve_query_from_session
+    if session[:query]
+      if session[:query][:id]
+        @query = Query.find_by_id(session[:query][:id])
+        return unless @query
+      else
+        @query = Query.new(:name => "_", :filters => session[:query][:filters], :group_by => session[:query][:group_by], :column_names => session[:query][:column_names])
+      end
+      if session[:query].has_key?(:project_id)
+        @query.project_id = session[:query][:project_id]
+      else
+        @query.project = @project
+      end
+      @query
     end
   end
 

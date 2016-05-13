@@ -32,12 +32,6 @@ class WatchersControllerTest < ActionController::TestCase
     User.current = nil
   end
 
-  def test_get_watch_should_be_invalid
-    @request.session[:user_id] = 3
-    get :watch, :object_type => 'issue', :object_id => '1'
-    assert_response 405
-  end
-
   def test_watch
     @request.session[:user_id] = 3
     assert_difference('Watcher.count') do
@@ -67,14 +61,73 @@ class WatchersControllerTest < ActionController::TestCase
     assert !Issue.find(1).watched_by?(User.find(3))
   end
 
-  def test_new_watcher
+  def test_new
+    @request.session[:user_id] = 2
+    xhr :get, :new, :object_type => 'issue', :object_id => '2'
+    assert_response :success
+    assert_select_rjs :replace_html, 'ajax-modal'
+  end
+
+  def test_new_for_new_record
+    @request.session[:user_id] = 2
+    xhr :get, :new, :project_id => 1
+    assert_response :success
+    assert_select_rjs :replace_html, 'ajax-modal'
+  end
+
+  def test_create
     @request.session[:user_id] = 2
     assert_difference('Watcher.count') do
-      xhr :post, :new, :object_type => 'issue', :object_id => '2', :watcher => {:user_id => '4'}
+      xhr :post, :create, :object_type => 'issue', :object_id => '2', :watcher => {:user_id => '4'}
       assert_response :success
       assert_select_rjs :replace_html, 'watchers'
+      assert_select_rjs :replace_html, 'ajax-modal'
     end
     assert Issue.find(2).watched_by?(User.find(4))
+  end
+
+  def test_create_multiple
+    @request.session[:user_id] = 2
+    assert_difference('Watcher.count', 2) do
+      xhr :post, :create, :object_type => 'issue', :object_id => '2', :watcher => {:user_ids => ['4', '7']}
+      assert_response :success
+      assert_select_rjs :replace_html, 'watchers'
+      assert_select_rjs :replace_html, 'ajax-modal'
+    end
+    assert Issue.find(2).watched_by?(User.find(4))
+    assert Issue.find(2).watched_by?(User.find(7))
+  end
+
+  def test_autocomplete_on_watchable_creation
+    xhr :get, :autocomplete_for_user, :q => 'mi'
+    assert_response :success
+    assert_select 'input', :count => 4
+    assert_select 'input[name=?][value=1]', 'watcher[user_ids][]'
+    assert_select 'input[name=?][value=2]', 'watcher[user_ids][]'
+    assert_select 'input[name=?][value=8]', 'watcher[user_ids][]'
+    assert_select 'input[name=?][value=9]', 'watcher[user_ids][]'
+  end
+
+  def test_autocomplete_on_watchable_update
+    xhr :get, :autocomplete_for_user, :q => 'mi', :object_id => '2' , :object_type => 'issue'
+    assert_response :success
+    assert_select 'input', :count => 3
+    assert_select 'input[name=?][value=2]', 'watcher[user_ids][]'
+    assert_select 'input[name=?][value=8]', 'watcher[user_ids][]'
+    assert_select 'input[name=?][value=9]', 'watcher[user_ids][]'
+
+  end
+
+  def test_append
+    @request.session[:user_id] = 2
+    assert_no_difference 'Watcher.count' do
+      xhr :post, :append, :watcher => {:user_ids => ['4', '7']}
+      assert_response :success
+      assert_select_rjs :insert_html, 'watchers_inputs' do
+        assert_select 'input[name=?][value=4]', 'issue[watcher_user_ids][]'
+        assert_select 'input[name=?][value=7]', 'issue[watcher_user_ids][]'
+      end
+    end
   end
 
   def test_remove_watcher

@@ -1,5 +1,5 @@
-# RedMine - project management software
-# Copyright (C) 2006-2011  Jean-Philippe Lang
+# Redmine - project management software
+# Copyright (C) 2006-2012  Jean-Philippe Lang
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -91,14 +91,16 @@ class WikiContent < ActiveRecord::Base
     end
 
     def text
-      @text ||= case compression
-      when 'gzip'
-        str = Zlib::Inflate.inflate(data)
+      @text ||= begin
+        str = case compression
+              when 'gzip'
+                Zlib::Inflate.inflate(data)
+              else
+                # uncompressed data
+                data
+              end
         str.force_encoding("UTF-8") if str.respond_to?(:force_encoding)
         str
-      else
-        # uncompressed data
-        data
       end
     end
 
